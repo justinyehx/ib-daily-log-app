@@ -2,8 +2,12 @@
 
 import { useEffect, useState } from "react";
 
-function formatDuration(startAt: string) {
-  const start = new Date(startAt);
+function buildLocalDateTime(startDate: string, startTime: string) {
+  return new Date(`${startDate}T${startTime}:00`);
+}
+
+function formatDuration(startDate: string, startTime: string) {
+  const start = buildLocalDateTime(startDate, startTime);
   const now = new Date();
   const totalMinutes = Math.max(Math.round((now.getTime() - start.getTime()) / 60000), 0);
   const hours = Math.floor(totalMinutes / 60);
@@ -16,18 +20,24 @@ function formatDuration(startAt: string) {
   return `${hours}h ${minutes}m`;
 }
 
-export function LiveDuration({ startAt }: { startAt: string }) {
-  const [value, setValue] = useState(() => formatDuration(startAt));
+export function LiveDuration({
+  startDate,
+  startTime
+}: {
+  startDate: string;
+  startTime: string;
+}) {
+  const [value, setValue] = useState(() => formatDuration(startDate, startTime));
 
   useEffect(() => {
-    setValue(formatDuration(startAt));
+    setValue(formatDuration(startDate, startTime));
 
     const interval = window.setInterval(() => {
-      setValue(formatDuration(startAt));
+      setValue(formatDuration(startDate, startTime));
     }, 30000);
 
     return () => window.clearInterval(interval);
-  }, [startAt]);
+  }, [startDate, startTime]);
 
   return <>{value}</>;
 }

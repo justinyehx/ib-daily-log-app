@@ -34,7 +34,7 @@ type PricePointOption = {
 type CustomerCard = {
   id: string;
   appointmentDate: string;
-  timeInAt: string;
+  timeInValue: string;
   guestName: string;
   storeName?: string;
   assignedTo: string;
@@ -170,7 +170,7 @@ function CustomerCheckoutCard({
         <div className={`customer-status ${optimisticStatus === "WAITING" ? "waiting" : ""}`}>
           {optimisticStatus === "WAITING" ? (
             <>
-              Waiting • <LiveDuration startAt={customer.timeInAt} />
+              Waiting • <LiveDuration startDate={customer.appointmentDate} startTime={customer.timeInValue} />
             </>
           ) : (
             "Active"
@@ -183,7 +183,7 @@ function CustomerCheckoutCard({
         {customer.visitType === "Walk-in" ? <span className="pill">Walk-in</span> : null}
         {optimisticStatus !== "WAITING" ? (
           <span className="pill">
-            <LiveDuration startAt={customer.timeInAt} />
+            <LiveDuration startDate={customer.appointmentDate} startTime={customer.timeInValue} />
           </span>
         ) : null}
       </div>

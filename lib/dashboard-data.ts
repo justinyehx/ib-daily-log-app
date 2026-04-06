@@ -380,7 +380,7 @@ export async function getDashboardData(storeSlug: string) {
     currentCustomers: currentCustomers.map((appointment) => ({
       id: appointment.id,
       appointmentDate: appointment.appointmentDate.toISOString().slice(0, 10),
-      timeInAt: appointment.timeIn.toISOString(),
+      timeInValue: appointment.timeIn.toISOString().slice(11, 16),
       guestName: appointment.customer.fullName,
       storeName: shell.sourceStores.find((entry) => entry.id === appointment.storeId)?.name || store.name,
       assignedTo: appointment.assignedStaffMember?.fullName || "Unassigned",
