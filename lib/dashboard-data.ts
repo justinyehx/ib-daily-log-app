@@ -24,6 +24,12 @@ function formatTime(date: Date | null) {
   }).format(date);
 }
 
+function formatTimeInputValue(date: Date) {
+  const hours = `${date.getHours()}`.padStart(2, "0");
+  const minutes = `${date.getMinutes()}`.padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
 function formatDuration(start: Date, end: Date | null) {
   const effectiveEnd = end ?? new Date();
 
@@ -380,7 +386,7 @@ export async function getDashboardData(storeSlug: string) {
     currentCustomers: currentCustomers.map((appointment) => ({
       id: appointment.id,
       appointmentDate: appointment.appointmentDate.toISOString().slice(0, 10),
-      timeInValue: appointment.timeIn.toISOString().slice(11, 16),
+      timeInValue: formatTimeInputValue(appointment.timeIn),
       guestName: appointment.customer.fullName,
       storeName: shell.sourceStores.find((entry) => entry.id === appointment.storeId)?.name || store.name,
       assignedTo: appointment.assignedStaffMember?.fullName || "Unassigned",
