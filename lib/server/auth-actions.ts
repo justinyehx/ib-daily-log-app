@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
+import { verifyPassword } from "@/lib/passwords";
 import { prisma } from "@/lib/prisma";
 
 function asString(value: FormDataEntryValue | null) {
@@ -29,10 +30,36 @@ function revalidateAll() {
 }
 
 export async function signInDemo(formData: FormData) {
+  const email = asString(formData.get("email")).toLowerCase();
   const role = asString(formData.get("role")).toUpperCase() as keyof typeof PASSWORDS;
   const password = asString(formData.get("password"));
   const storeSlug = asString(formData.get("storeSlug"));
   const stylistName = asString(formData.get("stylistName"));
+
+  if (email) {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        store: true,
+        staffMember: true
+      }
+    });
+
+    if (!user || !user.isActive || !user.passwordHash || !verifyPassword(password, user.passwordHash)) {
+      throw new Error("Email or password is incorrect.");
+    }
+
+    const cookieStore = await cookies();
+    const userStoreSlug = user.store?.slug || storeSlug || "curve";
+    cookieStore.set("ib-demo-auth", "true");
+    cookieStore.set("ib-demo-user-id", user.id);
+    cookieStore.set("ib-demo-role", user.role);
+    cookieStore.set("ib-demo-store", userStoreSlug);
+    cookieStore.set("ib-demo-stylist", user.role === "STYLIST" ? user.staffMember?.fullName || user.fullName : "");
+
+    revalidateAll();
+    redirect(user.role === "STYLIST" ? "/stylists" : "/dashboard");
+  }
 
   if (!(role in PASSWORDS)) {
     throw new Error("Select a role.");
@@ -77,6 +104,7 @@ export async function signInDemo(formData: FormData) {
 
   const cookieStore = await cookies();
   cookieStore.set("ib-demo-auth", "true");
+  cookieStore.delete("ib-demo-user-id");
   cookieStore.set("ib-demo-role", role);
   cookieStore.set("ib-demo-store", storeSlug || "curve");
   cookieStore.set("ib-demo-stylist", role === "STYLIST" ? stylistName : "");
@@ -88,6 +116,7 @@ export async function signInDemo(formData: FormData) {
 export async function signOutDemo() {
   const cookieStore = await cookies();
   cookieStore.delete("ib-demo-auth");
+  cookieStore.delete("ib-demo-user-id");
   cookieStore.delete("ib-demo-role");
   cookieStore.delete("ib-demo-store");
   cookieStore.delete("ib-demo-stylist");

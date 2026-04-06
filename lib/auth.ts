@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 
 import { appEnv } from "@/lib/env";
+import { prisma } from "@/lib/prisma";
 import { COMBINED_STORE_NAME, COMBINED_STORE_SLUG } from "@/lib/store-views";
 
 export type DemoRole = "USER" | "STYLIST" | "MANAGER" | "ADMIN";
@@ -29,9 +30,34 @@ export async function getActiveStoreSlug() {
 export async function getCurrentSession(): Promise<CurrentSession> {
   const cookieStore = await cookies();
   const isAuthenticated = cookieStore.get("ib-demo-auth")?.value === "true";
+  const userId = cookieStore.get("ib-demo-user-id")?.value || "";
   const role = (cookieStore.get("ib-demo-role")?.value as DemoRole | undefined) || "USER";
   const storeSlug = cookieStore.get("ib-demo-store")?.value || appEnv.defaultStoreSlug;
   const stylistName = cookieStore.get("ib-demo-stylist")?.value || "";
+
+  if (isAuthenticated && userId) {
+    const user = await prisma.user.findFirst({
+      where: {
+        id: userId,
+        isActive: true
+      },
+      include: {
+        staffMember: true,
+        store: true
+      }
+    });
+
+    if (user) {
+      const userStoreSlug = user.store?.slug || storeSlug || appEnv.defaultStoreSlug;
+      return {
+        fullName: user.role === "STYLIST" && user.staffMember?.fullName ? user.staffMember.fullName : user.fullName,
+        role: user.role,
+        storeSlug: userStoreSlug,
+        storeName: STORE_LABELS[userStoreSlug] || user.store?.name || "Curve by IB",
+        isAuthenticated: true
+      };
+    }
+  }
 
   return {
     fullName:

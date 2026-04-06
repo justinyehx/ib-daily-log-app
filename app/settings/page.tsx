@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { SettingsAccessForm } from "@/components/settings-access-form";
 import { SubmitButton } from "@/components/submit-button";
+import { UserAccountForm } from "@/components/user-account-form";
 import { getCurrentSession } from "@/lib/auth";
 import { getSettingsData } from "@/lib/reporting-data";
-import { addSettingsItem, removeSettingsItem, switchDemoStore } from "@/lib/server/settings-actions";
+import { addSettingsItem, disableUserAccount, removeSettingsItem, switchDemoStore } from "@/lib/server/settings-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -136,6 +137,64 @@ export default async function SettingsPage() {
                   <span>Edit mode</span>
                   <strong>{settings.isVirtualStore ? "Read only" : "Live"}</strong>
                 </div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <p className="panel-kicker">User Accounts</p>
+              <h3>Manage staff sign-ins</h3>
+            </div>
+          </div>
+
+          <div className="settings-grid">
+            <section className="settings-card">
+              <p className="panel-kicker">{isAdmin ? "Admin" : "Manager"} access</p>
+              <h3>Create a user</h3>
+              <p className="settings-copy">
+                {isAdmin
+                  ? "Admins can create users, stylists, managers, and admins for any store."
+                  : "Managers can create stylist accounts for their current store only."}
+              </p>
+              <UserAccountForm
+                canCreateAnyRole={isAdmin}
+                currentStoreId={settings.accountStores[0]?.id || settings.store.id}
+                currentStoreName={settings.accountStores[0]?.name || settings.store.name}
+                stores={settings.accountStores}
+              />
+            </section>
+
+            <section className="settings-card">
+              <p className="panel-kicker">Active Accounts</p>
+              <h3>User list</h3>
+              <div className="operation-list">
+                {settings.users.length ? (
+                  settings.users.map((user) => (
+                    <div className={`operation-item account-item ${!user.isActive ? "muted" : ""}`} key={user.id}>
+                      <span>
+                        <strong>{user.fullName}</strong>
+                        <small>
+                          {user.email} · {user.role} · {user.storeName}
+                          {user.stylistName ? ` · ${user.stylistName}` : ""}
+                          {!user.isActive ? " · inactive" : ""}
+                        </small>
+                      </span>
+                      {isAdmin && user.isActive ? (
+                        <form action={disableUserAccount}>
+                          <input type="hidden" name="userId" value={user.id} />
+                          <SubmitButton className="button secondary" pendingLabel="Disabling...">
+                            Disable
+                          </SubmitButton>
+                        </form>
+                      ) : null}
+                    </div>
+                  ))
+                ) : (
+                  <p className="settings-copy">No user accounts have been created for this view yet.</p>
+                )}
               </div>
             </section>
           </div>

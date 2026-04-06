@@ -491,6 +491,37 @@ export async function getStylistsData(
 export async function getSettingsData(storeSlug: string) {
   const shell = await getStoreShellData(storeSlug);
   if (!shell) return null;
+  const accountStores = shell.sourceStores.map((store) => ({
+    id: store.id,
+    slug: store.slug,
+    name: store.name
+  }));
+  const accountStoreIds = shell.isVirtualStore ? shell.storeIds : shell.sourceStores.map((store) => store.id);
+  const users = await prisma.user.findMany({
+    where: {
+      OR: [
+        {
+          storeId: {
+            in: accountStoreIds
+          }
+        },
+        { role: "ADMIN" }
+      ]
+    },
+    include: {
+      store: {
+        select: {
+          name: true
+        }
+      },
+      staffMember: {
+        select: {
+          fullName: true
+        }
+      }
+    },
+    orderBy: [{ isActive: "desc" }, { role: "asc" }, { fullName: "asc" }]
+  });
 
   const optionGroups = [
     {
@@ -568,6 +599,16 @@ export async function getSettingsData(storeSlug: string) {
   return {
     ...shell,
     isVirtualStore: shell.isVirtualStore,
+    accountStores,
+    users: users.map((user) => ({
+      id: user.id,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      storeName: user.store?.name || "All stores",
+      stylistName: user.staffMember?.fullName || "",
+      isActive: user.isActive
+    })),
     optionGroups
   };
 }

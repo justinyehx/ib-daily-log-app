@@ -1664,6 +1664,57 @@ textarea:disabled {
   gap: 14px;
 }
 
+.account-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+}
+
+.account-form .settings-copy,
+.account-form .settings-actions {
+  grid-column: 1 / -1;
+}
+
+.segmented-control {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.segmented-control button {
+  min-height: 42px;
+  border-radius: 999px;
+  border: 1px solid rgba(76, 50, 33, 0.14);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--text-soft);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.segmented-control button.active {
+  background: rgba(178, 96, 58, 0.14);
+  border-color: rgba(178, 96, 58, 0.3);
+  color: var(--text);
+}
+
+.account-item {
+  align-items: flex-start;
+}
+
+.account-item span {
+  display: grid;
+  gap: 4px;
+}
+
+.account-item small {
+  color: var(--text-soft);
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.account-item.muted {
+  opacity: 0.58;
+}
+
 .settings-actions {
   display: flex;
   justify-content: flex-end;

@@ -18,9 +18,8 @@ export default async function LoginPage() {
           <div className="eyebrow">Access</div>
           <h1 className="panel-title">Sign in to Impression Bridal Daily Log</h1>
           <p className="panel-copy">
-            This is the internal beta sign-in flow for the live app. It uses temporary role
-            passwords right now, but the access flow, store routing, and stylist scoping now work
-            like a real entry point instead of dropping everyone into admin.
+            Use the account your admin or manager created for you. Beta role access is still
+            available as a backup while we finish rollout.
           </p>
         </div>
 

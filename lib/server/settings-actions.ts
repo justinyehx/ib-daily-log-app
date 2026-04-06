@@ -1,9 +1,10 @@
 "use server";
 
-import { StaffRole, StoreOptionKind } from "@prisma/client";
+import { StaffRole, StoreOptionKind, UserRole } from "@prisma/client";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 
+import { hashPassword } from "@/lib/passwords";
 import { prisma } from "@/lib/prisma";
 import { normalizeName } from "@/lib/strings";
 
@@ -20,6 +21,29 @@ async function requireAdminCookie() {
   if (!isAuthenticated || role !== "ADMIN") {
     throw new Error("Admin access is required.");
   }
+}
+
+async function getAuthenticatedRole() {
+  const cookieStore = await cookies();
+  const isAuthenticated = cookieStore.get("ib-demo-auth")?.value === "true";
+  const role = cookieStore.get("ib-demo-role")?.value;
+  const storeSlug = cookieStore.get("ib-demo-store")?.value || "";
+
+  if (!isAuthenticated || !role) {
+    throw new Error("Sign in is required.");
+  }
+
+  return { role, storeSlug };
+}
+
+function revalidateSettingsAndLogin() {
+  revalidatePath("/settings");
+  revalidatePath("/login");
+  revalidatePath("/dashboard");
+  revalidatePath("/daily-log");
+  revalidatePath("/analytics");
+  revalidatePath("/stylists");
+  revalidatePath("/admin-view");
 }
 
 function optionKindFromFormKind(formKind: string) {
@@ -166,6 +190,110 @@ export async function removeSettingsItem(formData: FormData) {
   revalidatePath("/analytics");
   revalidatePath("/stylists");
   revalidatePath("/admin-view");
+}
+
+export async function createUserAccount(formData: FormData) {
+  const session = await getAuthenticatedRole();
+  const fullName = asString(formData.get("fullName"));
+  const email = asString(formData.get("email")).toLowerCase();
+  const password = asString(formData.get("password"));
+  const roleValue = asString(formData.get("role")).toUpperCase();
+  const storeId = asString(formData.get("storeId"));
+  const role =
+    roleValue === "USER" || roleValue === "STYLIST" || roleValue === "MANAGER" || roleValue === "ADMIN"
+      ? roleValue
+      : null;
+
+  if (!fullName || !email || !password || !role || !storeId) {
+    throw new Error("Name, email, password, role, and store are required.");
+  }
+
+  if (password.length < 6) {
+    throw new Error("Temporary password must be at least 6 characters.");
+  }
+
+  if (session.role !== "ADMIN") {
+    const managerStore = await prisma.store.findUnique({
+      where: { slug: session.storeSlug },
+      select: { id: true }
+    });
+
+    if (session.role !== "MANAGER" || role !== "STYLIST" || !managerStore || storeId !== managerStore.id) {
+      throw new Error("Managers can only create stylist users for their current store.");
+    }
+  }
+
+  const store = await prisma.store.findUnique({
+    where: { id: storeId },
+    select: { id: true }
+  });
+
+  if (!store) {
+    throw new Error("Store could not be found.");
+  }
+
+  let staffMemberId: string | null = null;
+  if (role === "STYLIST") {
+    const staffMember = await prisma.staffMember.upsert({
+      where: {
+        storeId_role_normalizedFullName: {
+          storeId,
+          role: StaffRole.STYLIST,
+          normalizedFullName: normalizeName(fullName)
+        }
+      },
+      update: {
+        fullName,
+        isActive: true
+      },
+      create: {
+        storeId,
+        role: StaffRole.STYLIST,
+        fullName,
+        normalizedFullName: normalizeName(fullName),
+        isActive: true
+      }
+    });
+    staffMemberId = staffMember.id;
+  }
+
+  await prisma.user.upsert({
+    where: { email },
+    update: {
+      fullName,
+      passwordHash: hashPassword(password),
+      role: role as UserRole,
+      storeId,
+      staffMemberId,
+      isActive: true
+    },
+    create: {
+      fullName,
+      email,
+      passwordHash: hashPassword(password),
+      role: role as UserRole,
+      storeId,
+      staffMemberId,
+      isActive: true
+    }
+  });
+
+  revalidateSettingsAndLogin();
+}
+
+export async function disableUserAccount(formData: FormData) {
+  await requireAdminCookie();
+  const userId = asString(formData.get("userId"));
+  if (!userId) {
+    throw new Error("User is required.");
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { isActive: false }
+  });
+
+  revalidateSettingsAndLogin();
 }
 
 export async function applyAccessSettings(formData: FormData) {
