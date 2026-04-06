@@ -7,9 +7,10 @@ import { SubmitButton } from "@/components/submit-button";
 type ReportFiltersFormProps = {
   filters: {
     store?: string;
-    view: "day" | "week" | "month" | "year";
+    view: "day" | "week" | "twoWeek" | "month" | "year";
     day: string;
     week: string;
+    twoWeek?: string;
     month: string;
     year: string;
     pricePoint?: string;
@@ -22,6 +23,7 @@ type ReportFiltersFormProps = {
   showVisitType?: boolean;
   showPricePoint?: boolean;
   showStore?: boolean;
+  showTwoWeek?: boolean;
 };
 
 export function ReportFiltersForm({
@@ -31,9 +33,10 @@ export function ReportFiltersForm({
   storeOptions = [],
   showVisitType = true,
   showPricePoint = true,
-  showStore = false
+  showStore = false,
+  showTwoWeek = false
 }: ReportFiltersFormProps) {
-  const [view, setView] = useState<"day" | "week" | "month" | "year">(filters.view);
+  const [view, setView] = useState<"day" | "week" | "twoWeek" | "month" | "year">(filters.view);
 
   return (
     <form className="report-controls" method="get">
@@ -56,11 +59,14 @@ export function ReportFiltersForm({
         <select
           className="select"
           name="view"
-          onChange={(event) => setView(event.target.value as "day" | "week" | "month" | "year")}
+          onChange={(event) =>
+            setView(event.target.value as "day" | "week" | "twoWeek" | "month" | "year")
+          }
           value={view}
         >
           <option value="day">Day</option>
           <option value="week">Week</option>
+          {showTwoWeek ? <option value="twoWeek">2-Week</option> : null}
           <option value="month">Month</option>
           <option value="year">Year</option>
         </select>
@@ -77,6 +83,13 @@ export function ReportFiltersForm({
         <label className="field">
           <span className="field-label">Week</span>
           <input className="input" name="week" type="week" defaultValue={filters.week} />
+        </label>
+      ) : null}
+
+      {view === "twoWeek" ? (
+        <label className="field">
+          <span className="field-label">2-Week Start</span>
+          <input className="input" name="twoWeek" type="date" defaultValue={filters.twoWeek} />
         </label>
       ) : null}
 

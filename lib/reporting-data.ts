@@ -26,7 +26,7 @@ import { getStoreViewShell } from "@/lib/store-views";
 function hasMeaningfulReportingSearchParams(searchParams?: Record<string, string | string[] | undefined>) {
   if (!searchParams) return false;
 
-  return ["view", "day", "week", "month", "year", "pricePoint", "visitType", "appointmentType"].some((key) => {
+  return ["view", "day", "week", "twoWeek", "month", "year", "pricePoint", "visitType", "appointmentType"].some((key) => {
     const value = searchParams[key];
     if (Array.isArray(value)) return value.length > 0;
     return typeof value === "string" && value.length > 0;

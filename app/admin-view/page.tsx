@@ -88,6 +88,7 @@ export default async function AdminViewPage({ searchParams }: AdminViewPageProps
             filters={admin.filters}
             pricePointOptions={admin.pricePointOptions}
             showStore
+            showTwoWeek
             storeOptions={admin.storeOptions}
           />
         </section>

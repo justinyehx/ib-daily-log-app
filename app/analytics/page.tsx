@@ -125,6 +125,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
             appointmentTypeOptions={analytics.appointmentTypeOptions}
             filters={analytics.filters}
             pricePointOptions={analytics.pricePointOptions}
+            showTwoWeek
           />
         </section>
 

@@ -128,6 +128,7 @@ export default async function StylistsPage({ searchParams }: StylistsPageProps) 
             appointmentTypeOptions={stylists.appointmentTypeOptions}
             filters={stylists.filters}
             pricePointOptions={stylists.pricePointOptions}
+            showTwoWeek
           />
         </section>
 

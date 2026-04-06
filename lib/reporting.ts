@@ -1,12 +1,13 @@
 import { AppointmentStatus, VisitType, type Appointment, type Customer, type Location, type StaffMember } from "@prisma/client";
 
-export type ReportingView = "day" | "week" | "month" | "year";
+export type ReportingView = "day" | "week" | "twoWeek" | "month" | "year";
 
 export type ReportingFilters = {
   store: string;
   view: ReportingView;
   day: string;
   week: string;
+  twoWeek: string;
   month: string;
   year: string;
   pricePoint: string;
@@ -62,6 +63,19 @@ export function parseWeekValue(weekValue: string) {
   };
 }
 
+function formatDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getPreviousTwoWeekStart(date: Date) {
+  const currentWeekStart = getStartOfWeek(date);
+  currentWeekStart.setDate(currentWeekStart.getDate() - 14);
+  return currentWeekStart;
+}
+
 export function getDefaultReportingFilters(): ReportingFilters {
   const now = new Date();
   const year = now.getFullYear().toString();
@@ -74,8 +88,9 @@ export function getDefaultReportingFilters(): ReportingFilters {
   return {
     store: "",
     view: "day",
-    day: `${month}-${String(now.getDate()).padStart(2, "0")}`,
+    day: formatDateInputValue(now),
     week: `${year}-W${String(weekNumber).padStart(2, "0")}`,
+    twoWeek: formatDateInputValue(getPreviousTwoWeekStart(now)),
     month,
     year,
     pricePoint: "",
@@ -95,9 +110,13 @@ export function resolveReportingFilters(searchParams?: Record<string, string | s
 
   return {
     store: read("store") || "",
-    view: view === "week" || view === "month" || view === "year" ? view : defaults.view,
+    view:
+      view === "week" || view === "twoWeek" || view === "month" || view === "year"
+        ? view
+        : defaults.view,
     day: read("day") || defaults.day,
     week: read("week") || defaults.week,
+    twoWeek: read("twoWeek") || defaults.twoWeek,
     month: read("month") || defaults.month,
     year: read("year") || defaults.year,
     pricePoint: read("pricePoint") || "",
@@ -117,6 +136,13 @@ export function getDateRange(filters: ReportingFilters) {
     if (parsed) return parsed;
   }
 
+  if (filters.view === "twoWeek") {
+    const start = getStartOfWeek(new Date(filters.twoWeek));
+    const end = new Date(start);
+    end.setDate(end.getDate() + 13);
+    return { start, end: endOfDay(end) };
+  }
+
   if (filters.view === "month") {
     const [yearPart, monthPart] = filters.month.split("-");
     const year = Number(yearPart);
@@ -132,7 +158,16 @@ export function getDateRange(filters: ReportingFilters) {
 }
 
 export function getFilterSummary(filters: ReportingFilters) {
-  let summary = filters.view === "day" ? filters.day : filters.view === "week" ? filters.week : filters.view === "month" ? filters.month : filters.year;
+  let summary =
+    filters.view === "day"
+      ? filters.day
+      : filters.view === "week"
+        ? filters.week
+        : filters.view === "twoWeek"
+          ? `${formatDate(getDateRange(filters).start)} - ${formatDate(getDateRange(filters).end)}`
+          : filters.view === "month"
+            ? filters.month
+            : filters.year;
 
   if (filters.store) {
     summary = `${filters.store} • ${summary}`;
