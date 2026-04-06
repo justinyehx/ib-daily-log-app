@@ -54,6 +54,7 @@ type DailyLogEditableRow = {
 type DailyLogWorkflowPanelProps = {
   createAction: (formData: FormData) => void | Promise<void>;
   updateAction: (formData: FormData) => void | Promise<void>;
+  deleteAction: (formData: FormData) => void | Promise<void>;
   storeId: string;
   todayDate: string;
   defaultTime: string;
@@ -88,6 +89,7 @@ type DailyLogWorkflowPanelProps = {
   }>;
   isVirtualStore?: boolean;
   storeConfigs?: StoreConfig[];
+  returnTo?: string;
 };
 
 type FormState = {
@@ -153,6 +155,11 @@ function getCurrentTimeValue() {
   return `${hours}:${minutes}`;
 }
 
+function getOffsetMinutes(dateValue: string, timeValue: string) {
+  if (!dateValue || !timeValue) return `${new Date().getTimezoneOffset()}`;
+  return `${new Date(`${dateValue}T${timeValue}:00`).getTimezoneOffset()}`;
+}
+
 function fromRow(row: DailyLogEditableRow): FormState {
   return {
     appointmentId: row.id,
@@ -177,6 +184,7 @@ function fromRow(row: DailyLogEditableRow): FormState {
 export function DailyLogWorkflowPanel({
   createAction,
   updateAction,
+  deleteAction,
   storeId,
   isVirtualStore = false,
   storeConfigs = [],
@@ -191,7 +199,8 @@ export function DailyLogWorkflowPanel({
   locations,
   rows,
   initialEditId,
-  previousCustomerProfiles
+  previousCustomerProfiles,
+  returnTo = ""
 }: DailyLogWorkflowPanelProps) {
   const defaultStoreId = storeConfigs[0]?.storeId || storeId;
   const defaultAppointmentTypeId = useMemo(() => findDefaultTypeId(appointmentTypes), [appointmentTypes]);
@@ -353,9 +362,18 @@ export function DailyLogWorkflowPanel({
           <h3 className="panel-title">{isEditing ? "Edit entry" : "Add appointment"}</h3>
         </div>
         {isEditing ? (
-          <button className="button secondary" onClick={cancelEdit} type="button">
-            Cancel edit
-          </button>
+          <div className="button-row">
+            <form action={deleteAction}>
+              <input type="hidden" name="appointmentId" value={formState.appointmentId} />
+              <input type="hidden" name="returnTo" value={returnTo} />
+              <SubmitButton className="button secondary destructive" pendingLabel="Removing...">
+                Remove entry
+              </SubmitButton>
+            </form>
+            <button className="button secondary" onClick={cancelEdit} type="button">
+              Cancel edit
+            </button>
+          </div>
         ) : null}
       </div>
 
@@ -372,6 +390,16 @@ export function DailyLogWorkflowPanel({
       >
         <input type="hidden" name="storeId" value={selectedStoreId || storeId} />
         <input type="hidden" name="appointmentId" value={formState.appointmentId} />
+        <input
+          type="hidden"
+          name="timeInOffsetMinutes"
+          value={getOffsetMinutes(formState.appointmentDate, formState.timeIn)}
+        />
+        <input
+          type="hidden"
+          name="timeOutOffsetMinutes"
+          value={formState.timeOut ? getOffsetMinutes(formState.appointmentDate, formState.timeOut) : ""}
+        />
 
         <div className="form-grid dense-form daily-log-dense-form">
           <label className="field">

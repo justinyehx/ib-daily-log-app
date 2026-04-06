@@ -80,7 +80,7 @@ function getAvailableStylistNames(
   );
 
   appointments.forEach((appointment) => {
-    if (appointment.assignedStaffMember?.role === StaffRole.STYLIST && appointment.assignedStaffMember.fullName) {
+    if (appointment.assignedStaffMember?.fullName) {
       names.add(appointment.assignedStaffMember.fullName);
     }
   });
@@ -265,6 +265,30 @@ export async function getAnalyticsData(
     isBridesSeenType(appointment.appointmentTypeLabel)
   );
   const reasonTallies = countByLabel(filteredAppointments, (appointment) => appointment.reasonDidNotBuyLabel);
+  const bridalPriceBreakdown = buildBreakdownRows(
+    filteredAppointments,
+    filters,
+    countByLabel(bridalAppointments, (appointment) => appointment.pricePointLabel)
+      .sort(
+        (a, b) =>
+          getPricePointSortValue(a.label) - getPricePointSortValue(b.label) ||
+          a.label.localeCompare(b.label)
+      )
+      .map((entry) => ({
+        label: entry.label,
+        matcher: (appointment: ReportingAppointment) => appointment.pricePointLabel === entry.label
+      }))
+  );
+  const bridalSizeBreakdown = buildBreakdownRows(
+    filteredAppointments,
+    filters,
+    countByLabel(bridalAppointments, (appointment) => appointment.sizeLabel)
+      .sort((a, b) => getSizeSortValue(a.label) - getSizeSortValue(b.label) || a.label.localeCompare(b.label))
+      .map((entry) => ({
+        label: entry.label,
+        matcher: (appointment: ReportingAppointment) => appointment.sizeLabel === entry.label
+      }))
+  );
 
   return {
     ...shell,
@@ -305,6 +329,8 @@ export async function getAnalyticsData(
         b.value - a.value ||
         a.label.localeCompare(b.label)
     ),
+    bridalPriceBreakdown,
+    bridalSizeBreakdown,
     reasonTallies
   };
 }

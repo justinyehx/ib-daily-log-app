@@ -11,6 +11,16 @@ function asString(value: FormDataEntryValue | null) {
   return value.trim();
 }
 
+function buildClientDateTime(baseDate: string, timeValue: string, offsetMinutesInput: string) {
+  if (!timeValue) return null;
+
+  const [year, month, day] = baseDate.split("-").map((value) => Number.parseInt(value, 10));
+  const [hours, minutes] = timeValue.split(":").map((value) => Number.parseInt(value, 10));
+  const offsetMinutes = Number.parseInt(offsetMinutesInput || "0", 10);
+
+  return new Date(Date.UTC(year, month - 1, day, hours, minutes) + offsetMinutes * 60_000);
+}
+
 export async function createDashboardCheckIn(formData: FormData) {
   const storeId = asString(formData.get("storeId"));
   const guestName = asString(formData.get("guestName"));
@@ -24,7 +34,9 @@ export async function createDashboardCheckIn(formData: FormData) {
   const comments = asString(formData.get("comments"));
   const appointmentDateInput = asString(formData.get("appointmentDate"));
   const timeInInput = asString(formData.get("timeIn"));
+  const timeInOffsetMinutes = asString(formData.get("timeInOffsetMinutes"));
   const timeOutInput = asString(formData.get("timeOut"));
+  const timeOutOffsetMinutes = asString(formData.get("timeOutOffsetMinutes"));
   const wearDateInput = asString(formData.get("wearDate"));
   const statusInput = asString(formData.get("status"));
 
@@ -112,8 +124,8 @@ export async function createDashboardCheckIn(formData: FormData) {
   const today = new Date();
   const baseDate = appointmentDateInput || today.toISOString().slice(0, 10);
   const appointmentDate = new Date(`${baseDate}T00:00:00`);
-  const timeIn = timeInInput ? new Date(`${baseDate}T${timeInInput}:00`) : today;
-  const timeOut = timeOutInput ? new Date(`${baseDate}T${timeOutInput}:00`) : null;
+  const timeIn = buildClientDateTime(baseDate, timeInInput, timeInOffsetMinutes) ?? today;
+  const timeOut = buildClientDateTime(baseDate, timeOutInput, timeOutOffsetMinutes);
   const wearDate = wearDateInput ? new Date(`${wearDateInput}T00:00:00`) : null;
 
   const customer =
@@ -208,6 +220,7 @@ export async function quickCheckoutCurrentCustomer(formData: FormData) {
   const appointmentId = asString(formData.get("appointmentId"));
   const appointmentDateInput = asString(formData.get("appointmentDate"));
   const timeOutInput = asString(formData.get("timeOut"));
+  const timeOutOffsetMinutes = asString(formData.get("timeOutOffsetMinutes"));
   const purchasedInput = asString(formData.get("purchased"));
   const otherPurchaseInput = asString(formData.get("otherPurchase"));
   const comments = asString(formData.get("comments"));
@@ -234,7 +247,7 @@ export async function quickCheckoutCurrentCustomer(formData: FormData) {
   }
 
   const baseDate = appointmentDateInput || appointment.appointmentDate.toISOString().slice(0, 10);
-  const resolvedTimeOut = timeOutInput ? new Date(`${baseDate}T${timeOutInput}:00`) : new Date();
+  const resolvedTimeOut = buildClientDateTime(baseDate, timeOutInput, timeOutOffsetMinutes) || new Date();
   const purchased = purchasedInput === "Yes" ? true : purchasedInput === "No" ? false : null;
   const otherPurchase =
     otherPurchaseInput === "Yes" ? true : otherPurchaseInput === "No" ? false : null;

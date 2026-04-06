@@ -2,6 +2,7 @@
 
 import { AppointmentStatus, StoreOptionKind, VisitType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { normalizeName } from "@/lib/strings";
@@ -9,6 +10,16 @@ import { normalizeName } from "@/lib/strings";
 function asString(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return "";
   return value.trim();
+}
+
+function buildClientDateTime(baseDate: string, timeValue: string, offsetMinutesInput: string) {
+  if (!timeValue) return null;
+
+  const [year, month, day] = baseDate.split("-").map((value) => Number.parseInt(value, 10));
+  const [hours, minutes] = timeValue.split(":").map((value) => Number.parseInt(value, 10));
+  const offsetMinutes = Number.parseInt(offsetMinutesInput || "0", 10);
+
+  return new Date(Date.UTC(year, month - 1, day, hours, minutes) + offsetMinutes * 60_000);
 }
 
 async function resolveAppointmentRelations({
@@ -114,10 +125,6 @@ async function resolveAppointmentRelations({
   };
 }
 
-function buildDateTime(baseDate: string, timeValue: string) {
-  return timeValue ? new Date(`${baseDate}T${timeValue}:00`) : null;
-}
-
 export async function createDailyLogEntry(formData: FormData) {
   const storeId = asString(formData.get("storeId"));
   const guestName = asString(formData.get("guestName"));
@@ -131,7 +138,9 @@ export async function createDailyLogEntry(formData: FormData) {
   const comments = asString(formData.get("comments"));
   const appointmentDateInput = asString(formData.get("appointmentDate"));
   const timeInInput = asString(formData.get("timeIn"));
+  const timeInOffsetMinutes = asString(formData.get("timeInOffsetMinutes"));
   const timeOutInput = asString(formData.get("timeOut"));
+  const timeOutOffsetMinutes = asString(formData.get("timeOutOffsetMinutes"));
   const wearDateInput = asString(formData.get("wearDate"));
   const statusInput = asString(formData.get("status"));
 
@@ -158,8 +167,8 @@ export async function createDailyLogEntry(formData: FormData) {
 
   const normalizedGuestName = normalizeName(guestName);
   const appointmentDate = new Date(`${appointmentDateInput}T00:00:00`);
-  const timeIn = buildDateTime(appointmentDateInput, timeInInput);
-  const timeOut = buildDateTime(appointmentDateInput, timeOutInput);
+  const timeIn = buildClientDateTime(appointmentDateInput, timeInInput, timeInOffsetMinutes);
+  const timeOut = buildClientDateTime(appointmentDateInput, timeOutInput, timeOutOffsetMinutes);
   const wearDate = wearDateInput ? new Date(`${wearDateInput}T00:00:00`) : null;
 
   if (!timeIn) {
@@ -237,7 +246,9 @@ export async function updateDailyLogEntry(formData: FormData) {
   const comments = asString(formData.get("comments"));
   const appointmentDateInput = asString(formData.get("appointmentDate"));
   const timeInInput = asString(formData.get("timeIn"));
+  const timeInOffsetMinutes = asString(formData.get("timeInOffsetMinutes"));
   const timeOutInput = asString(formData.get("timeOut"));
+  const timeOutOffsetMinutes = asString(formData.get("timeOutOffsetMinutes"));
   const wearDateInput = asString(formData.get("wearDate"));
   const visitTypeInput = asString(formData.get("visitType"));
   const statusInput = asString(formData.get("status"));
@@ -273,8 +284,8 @@ export async function updateDailyLogEntry(formData: FormData) {
 
   const normalizedGuestName = normalizeName(guestName);
   const appointmentDate = new Date(`${appointmentDateInput}T00:00:00`);
-  const timeIn = buildDateTime(appointmentDateInput, timeInInput);
-  const timeOut = buildDateTime(appointmentDateInput, timeOutInput);
+  const timeIn = buildClientDateTime(appointmentDateInput, timeInInput, timeInOffsetMinutes);
+  const timeOut = buildClientDateTime(appointmentDateInput, timeOutInput, timeOutOffsetMinutes);
   const wearDate = wearDateInput ? new Date(`${wearDateInput}T00:00:00`) : null;
 
   if (!timeIn) {
@@ -338,4 +349,22 @@ export async function updateDailyLogEntry(formData: FormData) {
 
   revalidatePath("/dashboard");
   revalidatePath("/daily-log");
+}
+
+export async function deleteDailyLogEntry(formData: FormData) {
+  const appointmentId = asString(formData.get("appointmentId"));
+  const returnTo = asString(formData.get("returnTo"));
+
+  if (!appointmentId) {
+    throw new Error("Appointment is required.");
+  }
+
+  await prisma.appointment.delete({
+    where: { id: appointmentId }
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/daily-log");
+
+  redirect(`/daily-log${returnTo || ""}`);
 }

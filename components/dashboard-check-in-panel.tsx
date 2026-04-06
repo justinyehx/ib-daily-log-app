@@ -91,6 +91,11 @@ function getCurrentTimeValue() {
   return `${hours}:${minutes}`;
 }
 
+function getOffsetMinutes(dateValue: string, timeValue: string) {
+  if (!dateValue || !timeValue) return `${new Date().getTimezoneOffset()}`;
+  return `${new Date(`${dateValue}T${timeValue}:00`).getTimezoneOffset()}`;
+}
+
 export function DashboardCheckInPanel({
   action,
   storeId,
@@ -289,6 +294,7 @@ export function DashboardCheckInPanel({
       >
         <input type="hidden" name="storeId" value={selectedStoreId || storeId} />
         <input type="hidden" name="appointmentDate" value={todayDate} />
+        <input type="hidden" name="timeInOffsetMinutes" value={getOffsetMinutes(todayDate, timeIn)} />
         <input type="hidden" name="status" value="ACTIVE" />
 
         <label className="field">

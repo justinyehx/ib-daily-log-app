@@ -42,6 +42,55 @@ function buildQuery(
   return `?${params.toString()}`;
 }
 
+function BreakdownTable({
+  title,
+  kicker,
+  rows,
+  emptyMessage
+}: {
+  title: string;
+  kicker: string;
+  rows: Array<{ label: string; bridesSeen: number; bridesSold: number; closeRate: number }>;
+  emptyMessage: string;
+}) {
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <div>
+          <p className="panel-kicker">{kicker}</p>
+          <h3>{title}</h3>
+        </div>
+      </div>
+      {rows.length ? (
+        <div className="table-wrap">
+          <table className="stylist-breakdown-table">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Brides Seen</th>
+                <th>Brides Sold</th>
+                <th>Closing %</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.label}>
+                  <td>{row.label}</td>
+                  <td>{row.bridesSeen}</td>
+                  <td>{row.bridesSold}</td>
+                  <td>{formatPercent(row.closeRate)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="panel-copy">{emptyMessage}</p>
+      )}
+    </section>
+  );
+}
+
 export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const session = await getCurrentSession();
@@ -216,64 +265,18 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
             </div>
           </section>
 
-          <section className="panel">
-            <div className="panel-head">
-              <div>
-                <p className="panel-kicker">Bridal Price Point</p>
-                <h3>Price point for brides only</h3>
-              </div>
-            </div>
-            <div className="stack-list">
-              {analytics.bridalPriceMix.length ? (
-                analytics.bridalPriceMix.map((item) => (
-                  <div className="stack-item" key={item.label}>
-                    <div className="stack-item-head">
-                      <strong>{item.label}</strong>
-                      <small>{item.value}</small>
-                    </div>
-                    <div className="bar">
-                      <span
-                        style={{
-                          width: `${(item.value / (analytics.bridalPriceMix[0]?.value || 1)) * 100}%`
-                        }}
-                      ></span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="panel-copy">No bridal price-point data in this reporting window.</p>
-              )}
-            </div>
-          </section>
-          <section className="panel">
-            <div className="panel-head">
-              <div>
-                <p className="panel-kicker">Bridal Size</p>
-                <h3>Size mix for brides only</h3>
-              </div>
-            </div>
-            <div className="stack-list">
-              {analytics.bridalSizeMix.length ? (
-                analytics.bridalSizeMix.map((item) => (
-                  <div className="stack-item" key={item.label}>
-                    <div className="stack-item-head">
-                      <strong>{item.label}</strong>
-                      <small>{item.value}</small>
-                    </div>
-                    <div className="bar">
-                      <span
-                        style={{
-                          width: `${(item.value / (analytics.bridalSizeMix[0]?.value || 1)) * 100}%`
-                        }}
-                      ></span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="panel-copy">No bridal size data in this reporting window.</p>
-              )}
-            </div>
-          </section>
+          <BreakdownTable
+            kicker="Bridal Price Point"
+            title="Bridal close by price"
+            rows={analytics.bridalPriceBreakdown}
+            emptyMessage="No bridal price-point data in this reporting window."
+          />
+          <BreakdownTable
+            kicker="Bridal Size"
+            title="Bridal close by size"
+            rows={analytics.bridalSizeBreakdown}
+            emptyMessage="No bridal size data in this reporting window."
+          />
 
           <section className="panel">
             <div className="panel-head">

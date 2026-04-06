@@ -34,7 +34,7 @@ type PricePointOption = {
 type CustomerCard = {
   id: string;
   appointmentDate: string;
-  timeInValue: string;
+  timeInAt: string;
   guestName: string;
   storeName?: string;
   assignedTo: string;
@@ -77,6 +77,11 @@ function defaultTimeNow() {
   const hours = `${now.getHours()}`.padStart(2, "0");
   const minutes = `${now.getMinutes()}`.padStart(2, "0");
   return `${hours}:${minutes}`;
+}
+
+function getOffsetMinutes(dateValue: string, timeValue: string) {
+  if (!dateValue || !timeValue) return `${new Date().getTimezoneOffset()}`;
+  return `${new Date(`${dateValue}T${timeValue}:00`).getTimezoneOffset()}`;
 }
 
 function purchaseValue(value: boolean | null) {
@@ -139,6 +144,7 @@ function CustomerCheckoutCard({
 }) {
   const [purchased, setPurchased] = useState<"Yes" | "No">(purchaseValue(customer.purchased));
   const [cbAppt, setCbAppt] = useState<"No" | "Yes">("No");
+  const [timeOutValue, setTimeOutValue] = useState(defaultTimeNow());
   const [optimisticStatus, setOptimisticStatus] = useState(customer.status);
   const [isHidden, setIsHidden] = useState(false);
   const [approvalPassword, setApprovalPassword] = useState("");
@@ -170,7 +176,7 @@ function CustomerCheckoutCard({
         <div className={`customer-status ${optimisticStatus === "WAITING" ? "waiting" : ""}`}>
           {optimisticStatus === "WAITING" ? (
             <>
-              Waiting • <LiveDuration startDate={customer.appointmentDate} startTime={customer.timeInValue} />
+              Waiting • <LiveDuration startAt={customer.timeInAt} />
             </>
           ) : (
             "Active"
@@ -183,7 +189,7 @@ function CustomerCheckoutCard({
         {customer.visitType === "Walk-in" ? <span className="pill">Walk-in</span> : null}
         {optimisticStatus !== "WAITING" ? (
           <span className="pill">
-            <LiveDuration startDate={customer.appointmentDate} startTime={customer.timeInValue} />
+            <LiveDuration startAt={customer.timeInAt} />
           </span>
         ) : null}
       </div>
@@ -245,10 +251,22 @@ function CustomerCheckoutCard({
         >
           <input type="hidden" name="appointmentId" value={customer.id} />
           <input type="hidden" name="appointmentDate" value={customer.appointmentDate} />
+          <input
+            type="hidden"
+            name="timeOutOffsetMinutes"
+            value={getOffsetMinutes(customer.appointmentDate, timeOutValue)}
+          />
 
           <label className="field">
             <FieldLabel>Check Out</FieldLabel>
-            <input className="input" name="timeOut" type="time" defaultValue={defaultTimeNow()} required />
+            <input
+              className="input"
+              name="timeOut"
+              type="time"
+              value={timeOutValue}
+              onChange={(event) => setTimeOutValue(event.target.value)}
+              required
+            />
           </label>
 
           {showPurchasedField ? (

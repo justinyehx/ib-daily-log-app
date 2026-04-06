@@ -628,9 +628,30 @@ textarea:disabled {
   font-size: 1.2rem;
 }
 
-.dashboard-average-panel .summary-value {
+.floor-snapshot-average {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  margin: 0 0 14px;
+  border: 1px solid rgba(171, 93, 59, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 249, 242, 0.82);
+}
+
+.floor-snapshot-average span {
+  color: var(--text-soft);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.floor-snapshot-average strong {
   font-family: var(--font-display), Georgia, serif;
-  font-size: 2.5rem;
+  font-size: 1.5rem;
   line-height: 1;
 }
 
@@ -1709,6 +1730,26 @@ textarea:disabled {
 
 .table-edit-link:hover {
   color: var(--accent-deep);
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.button.destructive {
+  border-color: rgba(178, 74, 48, 0.22);
+  color: #8f4029;
+  background: rgba(255, 244, 240, 0.92);
+}
+
+.pick-row td {
+  background: rgba(255, 249, 242, 0.78);
+}
+
+.selected-row td {
+  background: rgba(198, 125, 76, 0.1);
 }
 
 .daily-log-comment-cell {

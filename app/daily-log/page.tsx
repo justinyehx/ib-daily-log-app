@@ -6,7 +6,7 @@ import { DailyLogWorkflowPanel } from "@/components/daily-log-workflow-panel";
 import { ReportFiltersForm } from "@/components/report-filters-form";
 import { getCurrentSession } from "@/lib/auth";
 import { getDailyLogData } from "@/lib/daily-log-data";
-import { createDailyLogEntry, updateDailyLogEntry } from "@/lib/server/daily-log-actions";
+import { createDailyLogEntry, deleteDailyLogEntry, updateDailyLogEntry } from "@/lib/server/daily-log-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +54,7 @@ export default async function DailyLogPage({ searchParams }: DailyLogPageProps) 
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const dailyLog = await getDailyLogData(session.storeSlug, resolvedSearchParams);
   const activeEditId = typeof resolvedSearchParams?.editId === "string" ? resolvedSearchParams.editId : "";
+  const isEditMode = resolvedSearchParams?.editMode === "1";
 
   if (!dailyLog) {
     return null;
@@ -62,7 +63,7 @@ export default async function DailyLogPage({ searchParams }: DailyLogPageProps) 
   const now = new Date();
   const todayDate = now.toISOString().slice(0, 10);
   const defaultTime = `${`${now.getHours()}`.padStart(2, "0")}:${`${now.getMinutes()}`.padStart(2, "0")}`;
-  const headerEditId = activeEditId || dailyLog.rows[0]?.id || "";
+  const returnTo = buildQuery(resolvedSearchParams, { editId: "", editMode: "1" });
 
   return (
     <AppShell
@@ -118,6 +119,7 @@ export default async function DailyLogPage({ searchParams }: DailyLogPageProps) 
           <DailyLogWorkflowPanel
             appointmentTypes={dailyLog.workflowOptions.appointmentTypes}
             createAction={createDailyLogEntry}
+            deleteAction={deleteDailyLogEntry}
             defaultTime={defaultTime}
             initialEditId={activeEditId}
             leadSources={dailyLog.workflowOptions.leadSources}
@@ -149,6 +151,7 @@ export default async function DailyLogPage({ searchParams }: DailyLogPageProps) 
             todayDate={todayDate}
             updateAction={updateDailyLogEntry}
             walkInTypes={dailyLog.workflowOptions.walkInTypes}
+            returnTo={returnTo}
           />
         </div>
 
@@ -160,12 +163,15 @@ export default async function DailyLogPage({ searchParams }: DailyLogPageProps) 
             </div>
             <div className="daily-log-header-meta">
               <p className="panel-copy">{dailyLog.rows.length} matching rows</p>
-              {headerEditId ? (
+              {dailyLog.rows.length ? (
                 <Link
                   className="table-edit-link button-link"
-                  href={`${buildQuery(resolvedSearchParams, { editId: headerEditId })}#daily-log-workflow`}
+                  href={`${buildQuery(resolvedSearchParams, {
+                    editMode: isEditMode ? "" : "1",
+                    editId: isEditMode ? "" : activeEditId
+                  })}#daily-log-workflow`}
                 >
-                  Edit log
+                  {isEditMode ? "Done editing" : "Edit log"}
                 </Link>
               ) : null}
             </div>
@@ -197,10 +203,24 @@ export default async function DailyLogPage({ searchParams }: DailyLogPageProps) 
               <tbody>
                 {dailyLog.rows.length ? (
                   dailyLog.rows.map((row) => (
-                    <tr key={row.id}>
+                    <tr
+                      key={row.id}
+                      className={activeEditId === row.id ? "selected-row" : isEditMode ? "pick-row" : ""}
+                    >
                       {dailyLog.store.slug === "galleria-curve" ? <td>{row.storeName}</td> : null}
                       <td>{row.date}</td>
-                      <td>{row.guestName}</td>
+                      <td>
+                        {isEditMode ? (
+                          <Link
+                            className="table-edit-link button-link"
+                            href={`${buildQuery(resolvedSearchParams, { editMode: "1", editId: row.id })}#daily-log-workflow`}
+                          >
+                            {row.guestName}
+                          </Link>
+                        ) : (
+                          row.guestName
+                        )}
+                      </td>
                       <td>{row.assignedTo}</td>
                       <td>{row.appointmentType}</td>
                       <td>{row.visitType}</td>
@@ -215,14 +235,6 @@ export default async function DailyLogPage({ searchParams }: DailyLogPageProps) 
                       <td>{row.otherSale}</td>
                       <td>{row.status}</td>
                       <td className="daily-log-comment-cell">
-                        <div className="daily-log-comment-head">
-                          <Link
-                            className="table-edit-link button-link"
-                            href={buildQuery(resolvedSearchParams, { editId: row.id })}
-                          >
-                            Edit log
-                          </Link>
-                        </div>
                         <div className="daily-log-comment-text">{row.comments}</div>
                       </td>
                     </tr>
@@ -290,7 +302,6 @@ export default async function DailyLogPage({ searchParams }: DailyLogPageProps) 
                   <th>Purchased</th>
                   <th>Other Sale</th>
                   <th>Comments</th>
-                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -309,13 +320,14 @@ export default async function DailyLogPage({ searchParams }: DailyLogPageProps) 
                       <td>{row.pricePoint}</td>
                       <td>{row.purchased}</td>
                       <td>{row.otherSale}</td>
-                      <td className="table-comment-one-line">{row.comments}</td>
-                      <td>{row.status}</td>
+                      <td className="daily-log-comment-cell">
+                        <div className="daily-log-comment-text">{row.comments}</div>
+                      </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={dailyLog.store.slug === "galleria-curve" ? 14 : 13}>
+                    <td colSpan={dailyLog.store.slug === "galleria-curve" ? 13 : 12}>
                       <div className="empty-state">
                         {dailyLog.filters.customerName
                           ? "No customer matches that search yet."

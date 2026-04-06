@@ -161,33 +161,26 @@ export default async function DashboardPage() {
                 <h3>Appointments by type</h3>
               </div>
             </div>
+            <div className="floor-snapshot-average">
+              <span>Average appointment</span>
+              <strong>{formatMinutes(dashboard.summary.averageDuration)}</strong>
+            </div>
             <div className="stack-list">
               {dashboard.appointmentMix.length ? (
-                <>
-                  <div className="stack-item">
-                    <div className="stack-item-head">
-                      <strong>Average appointment</strong>
-                      <small>{formatMinutes(dashboard.summary.averageDuration)}</small>
-                    </div>
-                    <div className="bar">
-                      <span style={{ width: "100%" }}></span>
-                    </div>
-                  </div>
-                  {dashboard.appointmentMix.map((item) => {
-                    const max = dashboard.appointmentMix[0]?.value || 1;
-                    return (
-                      <div className="stack-item" key={item.label}>
-                        <div className="stack-item-head">
-                          <strong>{item.label}</strong>
-                          <small>{item.value}</small>
-                        </div>
-                        <div className="bar">
-                          <span style={{ width: `${(item.value / max) * 100}%` }}></span>
-                        </div>
+                dashboard.appointmentMix.map((item) => {
+                  const max = dashboard.appointmentMix[0]?.value || 1;
+                  return (
+                    <div className="stack-item" key={item.label}>
+                      <div className="stack-item-head">
+                        <strong>{item.label}</strong>
+                        <small>{item.value}</small>
                       </div>
-                    );
-                  })}
-                </>
+                      <div className="bar">
+                        <span style={{ width: `${(item.value / max) * 100}%` }}></span>
+                      </div>
+                    </div>
+                  );
+                })
               ) : (
                 <p className="panel-note">No appointments logged today yet.</p>
               )}
