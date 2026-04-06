@@ -1,0 +1,200 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  USER
+  STYLIST
+  MANAGER
+  ADMIN
+}
+
+enum StaffRole {
+  STYLIST
+  SEAMSTRESS
+}
+
+enum VisitType {
+  APPOINTMENT
+  WALK_IN
+}
+
+enum AppointmentStatus {
+  WAITING
+  ACTIVE
+  COMPLETE
+  CANCELLED
+}
+
+enum StoreOptionKind {
+  APPOINTMENT_TYPE
+  WALK_IN_TYPE
+  LEAD_SOURCE
+  PRICE_POINT
+  SIZE
+  REASON_DID_NOT_BUY
+}
+
+model Store {
+  id           String        @id @default(cuid())
+  slug         String        @unique
+  name         String
+  isActive     Boolean       @default(true)
+  users        User[]
+  staffMembers StaffMember[]
+  locations    Location[]
+  customers    Customer[]
+  options      StoreOption[]
+  appointments Appointment[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model User {
+  id                  String        @id @default(cuid())
+  authUserId          String?       @unique
+  email               String        @unique
+  fullName            String
+  role                UserRole      @default(USER)
+  isActive            Boolean       @default(true)
+  storeId             String?
+  store               Store?        @relation(fields: [storeId], references: [id])
+  staffMemberId       String?       @unique
+  staffMember         StaffMember?  @relation(fields: [staffMemberId], references: [id])
+  createdAppointments Appointment[] @relation("AppointmentCreatedBy")
+  approvedAppointments Appointment[] @relation("AppointmentApprovedBy")
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([role, isActive])
+  @@index([storeId, role])
+}
+
+model StaffMember {
+  id                   String        @id @default(cuid())
+  storeId              String
+  store                Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  fullName             String
+  normalizedFullName   String
+  role                 StaffRole
+  isActive             Boolean       @default(true)
+  user                 User?
+  assignedAppointments Appointment[] @relation("AppointmentAssignedStaff")
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  @@unique([storeId, role, normalizedFullName])
+  @@index([storeId, role, isActive])
+}
+
+model Location {
+  id                   String        @id @default(cuid())
+  storeId              String
+  store                Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name                 String
+  normalizedName       String
+  isActive             Boolean       @default(true)
+  appointments         Appointment[]
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  @@unique([storeId, normalizedName])
+  @@index([storeId, isActive])
+}
+
+model Customer {
+  id                 String        @id @default(cuid())
+  storeId            String
+  store              Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  fullName           String
+  normalizedFullName String
+  phone              String?
+  email              String?
+  notes              String?
+  appointments       Appointment[]
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([storeId, normalizedFullName])
+  @@index([storeId, createdAt])
+}
+
+model StoreOption {
+  id                           String        @id @default(cuid())
+  storeId                      String
+  store                        Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  kind                         StoreOptionKind
+  label                        String
+  normalizedLabel              String
+  sortOrder                    Int           @default(0)
+  isActive                     Boolean       @default(true)
+  metadata                     Json?
+  appointmentTypeAppointments  Appointment[] @relation("AppointmentTypeOption")
+  leadSourceAppointments       Appointment[] @relation("LeadSourceOption")
+  pricePointAppointments       Appointment[] @relation("PricePointOption")
+  sizeAppointments             Appointment[] @relation("SizeOption")
+  reasonDidNotBuyAppointments  Appointment[] @relation("ReasonDidNotBuyOption")
+  createdAt                    DateTime      @default(now())
+  updatedAt                    DateTime      @updatedAt
+
+  @@unique([storeId, kind, normalizedLabel])
+  @@index([storeId, kind, isActive, sortOrder])
+}
+
+model Appointment {
+  id                      String             @id @default(cuid())
+  storeId                 String
+  store                   Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customerId              String
+  customer                Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  assignedStaffMemberId   String?
+  assignedStaffMember     StaffMember?       @relation("AppointmentAssignedStaff", fields: [assignedStaffMemberId], references: [id])
+  locationId              String?
+  location                Location?          @relation(fields: [locationId], references: [id])
+  appointmentDate         DateTime           @db.Date
+  timeIn                  DateTime
+  timeOut                 DateTime?
+  wearDate                DateTime?          @db.Date
+  visitType               VisitType
+  appointmentTypeOptionId String?
+  appointmentTypeOption   StoreOption?       @relation("AppointmentTypeOption", fields: [appointmentTypeOptionId], references: [id])
+  appointmentTypeLabel    String
+  leadSourceOptionId      String?
+  leadSourceOption        StoreOption?       @relation("LeadSourceOption", fields: [leadSourceOptionId], references: [id])
+  leadSourceLabel         String?
+  pricePointOptionId      String?
+  pricePointOption        StoreOption?       @relation("PricePointOption", fields: [pricePointOptionId], references: [id])
+  pricePointLabel         String?
+  sizeOptionId            String?
+  sizeOption              StoreOption?       @relation("SizeOption", fields: [sizeOptionId], references: [id])
+  sizeLabel               String?
+  reasonDidNotBuyOptionId String?
+  reasonDidNotBuyOption   StoreOption?       @relation("ReasonDidNotBuyOption", fields: [reasonDidNotBuyOptionId], references: [id])
+  reasonDidNotBuyLabel    String?
+  cbAppointmentScheduled  Boolean            @default(false)
+  cbAppointmentAt         DateTime?
+  purchased               Boolean?
+  otherPurchase           Boolean?
+  status                  AppointmentStatus  @default(ACTIVE)
+  comments                String?
+  managerApprovalRequired Boolean            @default(false)
+  approvedByUserId        String?
+  approvedByUser          User?              @relation("AppointmentApprovedBy", fields: [approvedByUserId], references: [id])
+  createdByUserId         String?
+  createdByUser           User?              @relation("AppointmentCreatedBy", fields: [createdByUserId], references: [id])
+  checkedOutAt            DateTime?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  @@index([storeId, appointmentDate])
+  @@index([storeId, status])
+  @@index([storeId, visitType, appointmentDate])
+  @@index([assignedStaffMemberId, appointmentDate])
+  @@index([customerId, appointmentDate])
+}
