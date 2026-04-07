@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
-
-import { SubmitButton } from "@/components/submit-button";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { type FormEvent, useTransition, useState } from "react";
 
 type ReportFiltersFormProps = {
   filters: {
@@ -37,9 +36,44 @@ export function ReportFiltersForm({
   showTwoWeek = false
 }: ReportFiltersFormProps) {
   const [view, setView] = useState<"day" | "week" | "twoWeek" | "month" | "year">(filters.view);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [isPending, startTransition] = useTransition();
+
+  function submitFilters(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const params = new URLSearchParams(searchParams.toString());
+
+    [
+      "store",
+      "view",
+      "day",
+      "week",
+      "twoWeek",
+      "month",
+      "year",
+      "pricePoint",
+      "visitType",
+      "appointmentType",
+      "stylist"
+    ].forEach((key) => params.delete(key));
+
+    formData.forEach((value, key) => {
+      const stringValue = typeof value === "string" ? value.trim() : "";
+      if (stringValue) {
+        params.set(key, stringValue);
+      }
+    });
+
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    });
+  }
 
   return (
-    <form className="report-controls" method="get">
+    <form className={`report-controls${isPending ? " is-loading" : ""}`} method="get" onSubmit={submitFilters}>
       {showStore ? (
         <label className="field">
           <span className="field-label">Store</span>
@@ -145,9 +179,9 @@ export function ReportFiltersForm({
       </label>
 
       <div className="form-actions report-apply">
-        <SubmitButton className="button" pendingLabel="Applying...">
-          Apply filters
-        </SubmitButton>
+        <button aria-busy={isPending} className={`button${isPending ? " is-pending" : ""}`} disabled={isPending} type="submit">
+          {isPending ? "Applying..." : "Apply filters"}
+        </button>
       </div>
     </form>
   );

@@ -818,6 +818,13 @@ textarea:disabled {
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
   align-items: end;
+  position: relative;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.report-controls.is-loading {
+  opacity: 0.72;
+  transform: translateY(1px);
 }
 
 .report-apply {

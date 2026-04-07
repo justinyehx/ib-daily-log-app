@@ -257,6 +257,12 @@ function buildPreviousCustomerProfiles(
   }>,
   storeNamesById: Map<string, string>
 ) {
+  const purchasedGuestNames = new Set(
+    appointments
+      .filter((appointment) => appointment.purchased === true)
+      .map((appointment) => appointment.customer.normalizedFullName)
+      .filter(Boolean)
+  );
   const latestByGuest = new Map<
     string,
     {
@@ -287,11 +293,6 @@ function buildPreviousCustomerProfiles(
       return;
     }
 
-    const hasPreviousPurchase = appointments.some(
-      (candidate) =>
-        candidate.customer.normalizedFullName === normalizedGuestName && candidate.purchased === true
-    );
-
     latestByGuest.set(normalizedGuestName, {
       id: appointment.id,
       guestName: appointment.customer.fullName,
@@ -310,7 +311,7 @@ function buildPreviousCustomerProfiles(
       otherSale:
         appointment.otherPurchase === null ? "" : appointment.otherPurchase ? "Yes" : "No",
       comments: appointment.comments || "",
-      hasPreviousPurchase,
+      hasPreviousPurchase: purchasedGuestNames.has(normalizedGuestName),
       storeId: appointment.storeId,
       storeName: storeNamesById.get(appointment.storeId) || ""
     });
