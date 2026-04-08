@@ -110,37 +110,105 @@ export async function getDashboardData(storeSlug: string) {
   const dayStart = startOfDay(today);
   const dayEnd = endOfDay(today);
 
-  const todaysAppointments = await prisma.appointment.findMany({
-    where: {
-      storeId: {
-        in: shell.storeIds
-      },
-      appointmentDate: {
-        gte: dayStart,
-        lte: dayEnd
-      }
-    },
-    include: {
-      customer: true,
-      assignedStaffMember: true,
-      location: true
-    },
-    orderBy: [{ status: "asc" }, { timeIn: "asc" }]
-  });
+  const twelveMonthsAgo = new Date(today);
+  twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
 
-  const historicalAppointments = await prisma.appointment.findMany({
-    where: {
-      storeId: {
-        in: shell.storeIds
-      }
-    },
-    include: {
-      customer: true,
-      assignedStaffMember: true,
-      location: true
-    },
-    orderBy: [{ appointmentDate: "desc" }, { timeIn: "desc" }]
-  });
+  const [todaysAppointments, historicalAppointments] = await Promise.all([
+    prisma.appointment.findMany({
+      where: {
+        storeId: {
+          in: shell.storeIds
+        },
+        appointmentDate: {
+          gte: dayStart,
+          lte: dayEnd
+        }
+      },
+      select: {
+        id: true,
+        storeId: true,
+        appointmentDate: true,
+        status: true,
+        timeIn: true,
+        timeOut: true,
+        appointmentTypeLabel: true,
+        visitType: true,
+        cbAppointmentScheduled: true,
+        cbAppointmentAt: true,
+        purchased: true,
+        otherPurchase: true,
+        reasonDidNotBuyLabel: true,
+        leadSourceOptionId: true,
+        leadSourceLabel: true,
+        pricePointOptionId: true,
+        pricePointLabel: true,
+        sizeOptionId: true,
+        sizeLabel: true,
+        comments: true,
+        wearDate: true,
+        customer: {
+          select: {
+            fullName: true,
+            normalizedFullName: true
+          }
+        },
+        assignedStaffMember: {
+          select: {
+            id: true,
+            fullName: true,
+            role: true
+          }
+        },
+        location: {
+          select: {
+            name: true
+          }
+        }
+      },
+      orderBy: [{ status: "asc" }, { timeIn: "asc" }]
+    }),
+    prisma.appointment.findMany({
+      where: {
+        storeId: {
+          in: shell.storeIds
+        },
+        appointmentDate: {
+          gte: twelveMonthsAgo
+        }
+      },
+      select: {
+        id: true,
+        storeId: true,
+        appointmentDate: true,
+        appointmentTypeLabel: true,
+        visitType: true,
+        comments: true,
+        leadSourceLabel: true,
+        pricePointLabel: true,
+        sizeLabel: true,
+        purchased: true,
+        otherPurchase: true,
+        wearDate: true,
+        customer: {
+          select: {
+            fullName: true,
+            normalizedFullName: true
+          }
+        },
+        assignedStaffMember: {
+          select: {
+            fullName: true
+          }
+        },
+        location: {
+          select: {
+            name: true
+          }
+        }
+      },
+      orderBy: [{ appointmentDate: "desc" }, { timeIn: "desc" }]
+    })
+  ]);
 
   const currentCustomers = todaysAppointments
     .filter(

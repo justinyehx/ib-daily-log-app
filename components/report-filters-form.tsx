@@ -107,35 +107,35 @@ export function ReportFiltersForm({
       </label>
 
       {view === "day" ? (
-        <label className="field">
+        <label className="field report-date-field">
           <span className="field-label">Day</span>
           <input className="input" name="day" type="date" defaultValue={filters.day} />
         </label>
       ) : null}
 
       {view === "week" ? (
-        <label className="field">
+        <label className="field report-date-field">
           <span className="field-label">Week</span>
           <input className="input" name="week" type="week" defaultValue={filters.week} />
         </label>
       ) : null}
 
       {view === "twoWeek" ? (
-        <label className="field">
+        <label className="field report-date-field">
           <span className="field-label">2-Week Start</span>
           <input className="input" name="twoWeek" type="date" defaultValue={filters.twoWeek} />
         </label>
       ) : null}
 
       {view === "month" ? (
-        <label className="field">
+        <label className="field report-date-field">
           <span className="field-label">Month</span>
           <input className="input" name="month" type="month" defaultValue={filters.month} />
         </label>
       ) : null}
 
       {view === "year" ? (
-        <label className="field">
+        <label className="field report-date-field report-year-field">
           <span className="field-label">Year</span>
           <input className="input" name="year" type="number" defaultValue={filters.year} />
         </label>

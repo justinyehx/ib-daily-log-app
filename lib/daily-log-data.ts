@@ -333,42 +333,91 @@ export async function getDailyLogData(
   const today = new Date();
   const todayStart = startOfDay(today);
   const todayEnd = endOfDay(today);
+  const twelveMonthsAgo = new Date(today);
+  twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
 
-  const todaysSummary = await prisma.appointment.findMany({
-    where: {
-      storeId: {
-        in: shell.storeIds
-      },
-      appointmentDate: {
-        gte: todayStart,
-        lte: todayEnd
-      }
-    },
-    select: {
-      status: true,
-      purchased: true
-    }
-  });
+  const needsDateDefault = !hasMeaningfulReportingSearchParams(searchParams);
 
-  let effectiveSearchParams = searchParams;
-  if (!hasMeaningfulReportingSearchParams(searchParams)) {
-    const latestAppointment = await prisma.appointment.findFirst({
+  const [todaysSummary, latestAppointmentResult, historicalAppointments] = await Promise.all([
+    prisma.appointment.findMany({
       where: {
         storeId: {
           in: shell.storeIds
+        },
+        appointmentDate: {
+          gte: todayStart,
+          lte: todayEnd
         }
       },
-      orderBy: [{ appointmentDate: "desc" }],
-      select: { appointmentDate: true }
-    });
+      select: {
+        status: true,
+        purchased: true
+      }
+    }),
+    needsDateDefault
+      ? prisma.appointment.findFirst({
+          where: {
+            storeId: {
+              in: shell.storeIds
+            }
+          },
+          orderBy: [{ appointmentDate: "desc" }],
+          select: { appointmentDate: true }
+        })
+      : Promise.resolve(null),
+    prisma.appointment.findMany({
+      where: {
+        storeId: {
+          in: shell.storeIds
+        },
+        appointmentDate: {
+          gte: twelveMonthsAgo
+        }
+      },
+      select: {
+        id: true,
+        storeId: true,
+        appointmentDate: true,
+        appointmentTypeLabel: true,
+        visitType: true,
+        comments: true,
+        leadSourceLabel: true,
+        pricePointLabel: true,
+        sizeLabel: true,
+        purchased: true,
+        otherPurchase: true,
+        wearDate: true,
+        status: true,
+        timeIn: true,
+        timeOut: true,
+        customer: {
+          select: {
+            fullName: true,
+            normalizedFullName: true
+          }
+        },
+        assignedStaffMember: {
+          select: {
+            fullName: true
+          }
+        },
+        location: {
+          select: {
+            name: true
+          }
+        }
+      },
+      orderBy: [{ appointmentDate: "desc" }, { timeIn: "desc" }]
+    })
+  ]);
 
-    if (latestAppointment) {
-      effectiveSearchParams = {
-        ...(searchParams || {}),
-        view: "year",
-        year: String(latestAppointment.appointmentDate.getFullYear())
-      };
-    }
+  let effectiveSearchParams = searchParams;
+  if (needsDateDefault && latestAppointmentResult) {
+    effectiveSearchParams = {
+      ...(searchParams || {}),
+      view: "year",
+      year: String(latestAppointmentResult.appointmentDate.getFullYear())
+    };
   }
 
   const filters = resolveFilters(effectiveSearchParams);
@@ -402,20 +451,6 @@ export async function getDailyLogData(
             }
           }
         : {})
-    },
-    include: {
-      customer: true,
-      assignedStaffMember: true,
-      location: true
-    },
-    orderBy: [{ appointmentDate: "desc" }, { timeIn: "desc" }]
-  });
-
-  const historicalAppointments = await prisma.appointment.findMany({
-    where: {
-      storeId: {
-        in: shell.storeIds
-      }
     },
     include: {
       customer: true,

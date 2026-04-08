@@ -76,6 +76,19 @@ function getPreviousTwoWeekStart(date: Date) {
   return currentWeekStart;
 }
 
+function formatMonthSummary(monthValue: string) {
+  const [yearPart, monthPart] = monthValue.split("-");
+  const year = Number(yearPart);
+  const month = Number(monthPart);
+
+  if (!year || !month) return monthValue;
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric"
+  }).format(new Date(year, month - 1, 1));
+}
+
 export function getDefaultReportingFilters(): ReportingFilters {
   const now = new Date();
   const year = now.getFullYear().toString();
@@ -166,7 +179,7 @@ export function getFilterSummary(filters: ReportingFilters) {
         : filters.view === "twoWeek"
           ? `${formatDate(getDateRange(filters).start)} - ${formatDate(getDateRange(filters).end)}`
           : filters.view === "month"
-            ? filters.month
+            ? formatMonthSummary(filters.month)
             : filters.year;
 
   if (filters.store) {

@@ -845,6 +845,14 @@ textarea:disabled {
   padding: 12px 14px;
 }
 
+.report-date-field {
+  max-width: 150px;
+}
+
+.report-year-field {
+  max-width: 120px;
+}
+
 .button {
   display: inline-flex;
   align-items: center;

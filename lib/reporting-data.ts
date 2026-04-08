@@ -242,6 +242,7 @@ export async function getAnalyticsData(
   const unassignedAppointmentsCount = filteredAppointments.filter(
     (appointment) => !appointment.assignedStaffMember
   ).length;
+  const storeCloseRate = getCloseRateValue(closeRateSeen, bridesSold);
   const insights = [
     topCloser
       ? `${topCloser.name} has the strongest close rate at ${formatPercent(topCloser.closeRate)} in this reporting window.`
@@ -255,9 +256,7 @@ export async function getAnalyticsData(
     unassignedAppointmentsCount
       ? `${unassignedAppointmentsCount} appointment${unassignedAppointmentsCount === 1 ? "" : "s"} in this window are still unassigned, so they are excluded from stylist leaderboard results.`
       : leaderboard.length
-        ? `Average stylist close rate is ${formatPercent(
-            leaderboard.reduce((sum, row) => sum + row.closeRate, 0) / leaderboard.length
-          )} across ${leaderboard.length} active stylist${leaderboard.length === 1 ? "" : "s"}.`
+        ? `Store close rate is ${formatPercent(storeCloseRate)} for this reporting window.`
         : `${filteredAppointments.length} total guests are included in this reporting window.`
   ];
 
@@ -312,7 +311,7 @@ export async function getAnalyticsData(
       { label: "Guests Seen", value: String(filteredAppointments.length) },
       { label: "Brides Seen", value: String(bridesSeen) },
       { label: "Brides Sold", value: String(bridesSold) },
-      { label: "Store Close Rate", value: formatPercent(getCloseRateValue(closeRateSeen, bridesSold)) }
+      { label: "Store Close Rate", value: formatPercent(storeCloseRate) }
     ],
     leaderboard,
     insights,

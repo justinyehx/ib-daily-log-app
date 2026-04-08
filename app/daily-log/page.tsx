@@ -90,12 +90,8 @@ export default async function DailyLogPage({ searchParams }: DailyLogPageProps) 
               <div className="summary-value summary-value-small">{dailyLog.filterSummary}</div>
             </article>
             <article className="summary-card">
-              <div className="summary-label">Rows shown</div>
+              <div className="summary-label">Customers</div>
               <div className="summary-value">{dailyLog.rows.length}</div>
-            </article>
-            <article className="summary-card">
-              <div className="summary-label">Store</div>
-              <div className="summary-value summary-value-small">{dailyLog.store.name}</div>
             </article>
           </div>
         </section>
