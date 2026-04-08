@@ -79,6 +79,8 @@ type DailyLogWorkflowPanelProps = {
   isVirtualStore?: boolean;
   storeConfigs?: StoreConfig[];
   returnTo?: string;
+  /** Called when the user clicks "Cancel edit", so a parent can clear its selected-row state. */
+  onCancelEdit?: () => void;
 };
 
 type FormState = {
@@ -159,7 +161,8 @@ export function DailyLogWorkflowPanel({
   rows,
   initialEditId,
   previousCustomerProfiles,
-  returnTo = ""
+  returnTo = "",
+  onCancelEdit
 }: DailyLogWorkflowPanelProps) {
   const defaultStoreId = storeConfigs[0]?.storeId || storeId;
   const defaultAppointmentTypeId = useMemo(() => findDefaultTypeId(appointmentTypes), [appointmentTypes]);
@@ -273,6 +276,7 @@ export function DailyLogWorkflowPanel({
       ...emptyState(todayDate, defaultTime),
       appointmentTypeOptionId: defaultAppointmentTypeId
     });
+    onCancelEdit?.();
   }
 
   function applyPreviousCustomer(profile: DailyLogWorkflowPanelProps["previousCustomerProfiles"][number]) {

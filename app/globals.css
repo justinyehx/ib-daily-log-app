@@ -633,8 +633,8 @@ textarea:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 12px 14px;
-  margin: 0 0 14px;
+  padding: 16px 18px;
+  margin: 0;
   border: 1px solid rgba(171, 93, 59, 0.14);
   border-radius: 16px;
   background: rgba(255, 249, 242, 0.82);
@@ -653,6 +653,11 @@ textarea:disabled {
   font-family: var(--font-display), Georgia, serif;
   font-size: 1.5rem;
   line-height: 1;
+}
+
+.floor-snapshot-subhead {
+  padding-top: 8px;
+  border-top: 1px solid rgba(125, 88, 58, 0.12);
 }
 
 .hero-band-copy {

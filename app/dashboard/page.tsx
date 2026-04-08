@@ -158,12 +158,18 @@ export default async function DashboardPage() {
             <div className="panel-head">
               <div>
                 <p className="panel-kicker">Floor Snapshot</p>
-                <h3>Appointments by type</h3>
+                <h3>Average appointment</h3>
               </div>
             </div>
             <div className="floor-snapshot-average">
               <span>Average appointment</span>
               <strong>{formatMinutes(dashboard.summary.averageDuration)}</strong>
+            </div>
+            <div className="panel-head floor-snapshot-subhead">
+              <div>
+                <p className="panel-kicker">Appointment Mix</p>
+                <h3>Appointments by type</h3>
+              </div>
             </div>
             <div className="stack-list">
               {dashboard.appointmentMix.length ? (
