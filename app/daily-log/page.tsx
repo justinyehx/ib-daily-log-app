@@ -7,41 +7,13 @@ import { ReportFiltersForm } from "@/components/report-filters-form";
 import { getCurrentSession } from "@/lib/auth";
 import { getDailyLogData } from "@/lib/daily-log-data";
 import { createDailyLogEntry, deleteDailyLogEntry, updateDailyLogEntry } from "@/lib/server/daily-log-actions";
+import { buildQuery } from "@/lib/query-utils";
 
 export const dynamic = "force-dynamic";
 
 type DailyLogPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
-
-function buildQuery(
-  searchParams: Record<string, string | string[] | undefined> | undefined,
-  updates: Record<string, string>
-) {
-  const params = new URLSearchParams();
-
-  Object.entries(searchParams || {}).forEach(([key, value]) => {
-    if (Array.isArray(value)) {
-      value.forEach((item) => params.append(key, item));
-      return;
-    }
-
-    if (typeof value === "string" && value) {
-      params.set(key, value);
-    }
-  });
-
-  Object.entries(updates).forEach(([key, value]) => {
-    if (!value) {
-      params.delete(key);
-      return;
-    }
-
-    params.set(key, value);
-  });
-
-  return `?${params.toString()}`;
-}
 
 export default async function DailyLogPage({ searchParams }: DailyLogPageProps) {
   const session = await getCurrentSession();

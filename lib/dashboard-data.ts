@@ -1,6 +1,7 @@
 import { AppointmentStatus, VisitType } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { normalizeKey } from "@/lib/strings";
 import { getAllStoreChoices, getStoreViewShell } from "@/lib/store-views";
 
 function startOfDay(date: Date) {
@@ -39,10 +40,6 @@ function formatDuration(start: Date, end: Date | null) {
 function durationInMinutes(start: Date, end: Date | null) {
   const effectiveEnd = end ?? new Date();
   return Math.max(Math.round((effectiveEnd.getTime() - start.getTime()) / 60000), 0);
-}
-
-function normalizeKey(value: string) {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 function dedupeByLabel<T extends { label: string }>(items: T[]) {

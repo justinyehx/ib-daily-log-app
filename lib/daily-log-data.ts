@@ -1,6 +1,7 @@
 import { AppointmentStatus, StoreOptionKind, VisitType } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { normalizeKey } from "@/lib/strings";
 import { getAllStoreChoices, getStoreViewShell } from "@/lib/store-views";
 
 export type DailyLogView = "day" | "week" | "month" | "year";
@@ -87,10 +88,6 @@ function formatDuration(start: Date, end: Date | null) {
 
   if (!hours) return `${minutes}m`;
   return `${hours}h ${minutes}m`;
-}
-
-function normalizeKey(value: string) {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 function dedupeByLabel<T extends { label: string }>(items: T[]) {

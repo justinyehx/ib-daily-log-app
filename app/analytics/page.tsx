@@ -6,41 +6,13 @@ import { ReportFiltersForm } from "@/components/report-filters-form";
 import { getCurrentSession } from "@/lib/auth";
 import { formatMinutes, formatPercent } from "@/lib/reporting";
 import { getAnalyticsData } from "@/lib/reporting-data";
+import { buildQuery } from "@/lib/query-utils";
 
 export const dynamic = "force-dynamic";
 
 type AnalyticsPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
-
-function buildQuery(
-  searchParams: Record<string, string | string[] | undefined> | undefined,
-  updates: Record<string, string>
-) {
-  const params = new URLSearchParams();
-
-  Object.entries(searchParams || {}).forEach(([key, value]) => {
-    if (Array.isArray(value)) {
-      value.forEach((item) => params.append(key, item));
-      return;
-    }
-
-    if (typeof value === "string" && value) {
-      params.set(key, value);
-    }
-  });
-
-  Object.entries(updates).forEach(([key, value]) => {
-    if (!value) {
-      params.delete(key);
-      return;
-    }
-
-    params.set(key, value);
-  });
-
-  return `?${params.toString()}`;
-}
 
 function BreakdownTable({
   title,

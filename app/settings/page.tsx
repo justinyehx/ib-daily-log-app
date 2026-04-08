@@ -8,7 +8,9 @@ import { getCurrentSession } from "@/lib/auth";
 import { getSettingsData } from "@/lib/reporting-data";
 import { addSettingsItem, disableUserAccount, removeSettingsItem, switchDemoStore } from "@/lib/server/settings-actions";
 
-export const dynamic = "force-dynamic";
+// No force-dynamic needed: getCurrentSession() reads cookies which already
+// makes this route dynamic. Settings data (staff, options, users) is
+// config-level data that changes only on explicit user action.
 
 export default async function SettingsPage() {
   const session = await getCurrentSession();

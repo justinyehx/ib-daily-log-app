@@ -1,6 +1,9 @@
+import { cache } from "react";
+
 import { StaffRole, StoreOptionKind } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { normalizeKey } from "@/lib/strings";
 
 export const COMBINED_STORE_SLUG = "galleria-curve";
 export const COMBINED_STORE_NAME = "Galleria and Curve";
@@ -50,10 +53,6 @@ export type StoreViewShell = {
   isVirtualStore: boolean;
   sourceStores: StoreViewStore[];
 };
-
-function normalizeKey(value: string) {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
-}
 
 function appendCombinedStore(stores: StoreChoice[]) {
   if (stores.some((store) => store.slug === COMBINED_STORE_SLUG)) {
@@ -119,7 +118,7 @@ export function isCombinedStoreSlug(storeSlug: string) {
   return storeSlug === COMBINED_STORE_SLUG;
 }
 
-export async function getAllStoreChoices() {
+export const getAllStoreChoices = cache(async function getAllStoreChoices() {
   const stores = await prisma.store.findMany({
     where: { isActive: true },
     orderBy: { name: "asc" },
@@ -131,7 +130,7 @@ export async function getAllStoreChoices() {
   });
 
   return appendCombinedStore(stores);
-}
+});
 
 export async function getAllStoreChoicesWithStylists(): Promise<StoreChoiceWithStylists[]> {
   const stores = await prisma.store.findMany({
@@ -177,7 +176,7 @@ export async function getAllStoreChoicesWithStylists(): Promise<StoreChoiceWithS
   ];
 }
 
-export async function getStoreViewShell(storeSlug: string): Promise<StoreViewShell | null> {
+export const getStoreViewShell = cache(async function getStoreViewShell(storeSlug: string): Promise<StoreViewShell | null> {
   const stores = await getAllStoreChoices();
 
   const sourceSlugs = isCombinedStoreSlug(storeSlug) ? COMBINED_SOURCE_SLUGS : [storeSlug];
@@ -249,4 +248,4 @@ export async function getStoreViewShell(storeSlug: string): Promise<StoreViewShe
     isVirtualStore: true,
     sourceStores
   };
-}
+});

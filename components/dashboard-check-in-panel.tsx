@@ -2,7 +2,15 @@
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 
+import { PreviousCustomerLookup, type CustomerProfile } from "@/components/previous-customer-lookup";
 import { SubmitButton } from "@/components/submit-button";
+import {
+  findDefaultTypeId,
+  formatDateLabel,
+  getCurrentTimeValue,
+  getOffsetMinutes,
+  isAlterationLabel
+} from "@/lib/appointment-form-utils";
 
 type Option = {
   id: string;
@@ -28,27 +36,6 @@ type StoreConfig = {
   staffMembers: StaffOption[];
 };
 
-type PreviousCustomerProfile = {
-  id: string;
-  guestName: string;
-  normalizedGuestName: string;
-  lastVisitDate: string;
-  appointmentType: string;
-  visitType: "Appointment" | "Walk-in";
-  assignedTo: string;
-  location: string;
-  wearDate: string;
-  heardAbout: string;
-  pricePoint: string;
-  size: string;
-  purchased: string;
-  otherSale: string;
-  comments: string;
-  hasPreviousPurchase: boolean;
-  storeId?: string;
-  storeName?: string;
-};
-
 type DashboardCheckInPanelProps = {
   action: (formData: FormData) => void | Promise<void>;
   storeId: string;
@@ -63,38 +50,8 @@ type DashboardCheckInPanelProps = {
   sizes: Option[];
   locations: Option[];
   staffMembers: StaffOption[];
-  previousCustomerProfiles: PreviousCustomerProfile[];
+  previousCustomerProfiles: CustomerProfile[];
 };
-
-function formatDateLabel(value: string) {
-  if (!value) return "—";
-  const date = new Date(`${value}T00:00:00`);
-  return new Intl.DateTimeFormat("en-US", {
-    month: "numeric",
-    day: "numeric",
-    year: "numeric"
-  }).format(date);
-}
-
-function isAlterationLabel(value: string) {
-  return value.toLowerCase().includes("alteration");
-}
-
-function findDefaultTypeId(options: Option[]) {
-  return options.find((option) => option.label.toLowerCase() === "new bride")?.id || "";
-}
-
-function getCurrentTimeValue() {
-  const now = new Date();
-  const hours = `${now.getHours()}`.padStart(2, "0");
-  const minutes = `${now.getMinutes()}`.padStart(2, "0");
-  return `${hours}:${minutes}`;
-}
-
-function getOffsetMinutes(dateValue: string, timeValue: string) {
-  if (!dateValue || !timeValue) return `${new Date().getTimezoneOffset()}`;
-  return `${new Date(`${dateValue}T${timeValue}:00`).getTimezoneOffset()}`;
-}
 
 export function DashboardCheckInPanel({
   action,
@@ -192,7 +149,7 @@ export function DashboardCheckInPanel({
     setSizeOptionId("");
   }, [selectedStoreId, visitType, activeWalkInTypes, activeAppointmentTypes]);
 
-  function applyPreviousCustomer(profile: PreviousCustomerProfile) {
+  function applyPreviousCustomer(profile: CustomerProfile) {
     const form = formRef.current;
     if (!form) return;
     const matchingStoreConfig =
@@ -505,82 +462,12 @@ export function DashboardCheckInPanel({
           </SubmitButton>
         </div>
 
-        {deferredQuery.length >= 2 ? (
-          <div className="previous-lookup full-span">
-            <div className="previous-lookup-head">
-              <div>
-                <div className="eyebrow">Previous Customers</div>
-                <p className="compact-note">
-                  {matches.length
-                    ? "Use a previous profile to fill in this check-in faster."
-                    : `No prior customer found for "${guestName.trim()}".`}
-                </p>
-              </div>
-            </div>
-
-            {matches.length ? (
-              <div className="previous-lookup-list">
-                {matches.map((profile) => (
-                  <article className="previous-lookup-card" key={profile.id}>
-                    <div className="previous-lookup-top">
-                      <div>
-                        <strong>{profile.guestName}</strong>
-                        <div className="compact-note">Last visit {formatDateLabel(profile.lastVisitDate)}</div>
-                        {profile.storeName ? <div className="compact-note">{profile.storeName}</div> : null}
-                      </div>
-                      <button
-                        className="button secondary"
-                        type="button"
-                        onClick={() => applyPreviousCustomer(profile)}
-                      >
-                        Use previous info
-                      </button>
-                    </div>
-
-                    <div className="pill-row">
-                      <span className="pill">{profile.appointmentType || "—"}</span>
-                      {profile.assignedTo ? <span className="pill">{profile.assignedTo}</span> : null}
-                      {profile.location ? <span className="pill">{profile.location}</span> : null}
-                    </div>
-
-                    <div className="lookup-grid">
-                      <div className="lookup-field">
-                        <span>Wear Date</span>
-                        <strong>{profile.wearDate ? formatDateLabel(profile.wearDate) : "—"}</strong>
-                      </div>
-                      <div className="lookup-field">
-                        <span>Heard From</span>
-                        <strong>{profile.heardAbout || "—"}</strong>
-                      </div>
-                      <div className="lookup-field">
-                        <span>Price Point</span>
-                        <strong>{profile.pricePoint || "—"}</strong>
-                      </div>
-                      <div className="lookup-field">
-                        <span>Size</span>
-                        <strong>{profile.size || "—"}</strong>
-                      </div>
-                      <div className="lookup-field">
-                        <span>Purchased</span>
-                        <strong>{profile.purchased || "—"}</strong>
-                      </div>
-                      <div className="lookup-field">
-                        <span>Other Sale</span>
-                        <strong>{profile.otherSale || "—"}</strong>
-                      </div>
-                    </div>
-
-                    {profile.comments ? (
-                      <p className="compact-note">
-                        <strong>Comment:</strong> {profile.comments}
-                      </p>
-                    ) : null}
-                  </article>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+        <PreviousCustomerLookup
+          guestName={guestName}
+          matches={matches}
+          onSelect={applyPreviousCustomer}
+          query={deferredQuery}
+        />
       </form>
     </section>
   );
