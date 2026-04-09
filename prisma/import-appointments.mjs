@@ -280,7 +280,8 @@ async function findExistingAppointment(storeId, customerId, appointmentDate, tim
           otherPurchase: true,
           status: true,
           comments: true,
-          checkedOutAt: true
+          checkedOutAt: true,
+          deletedAt: true
         }
       }),
     `findAppointment(${customerId}:${appointmentTypeLabel}:${timeIn.toISOString()})`
@@ -288,6 +289,10 @@ async function findExistingAppointment(storeId, customerId, appointmentDate, tim
 }
 
 async function updateExistingAppointmentIfNeeded(existing, updateData, label) {
+  if (existing.deletedAt) {
+    return false;
+  }
+
   const patch = {};
 
   Object.entries(updateData).forEach(([key, value]) => {

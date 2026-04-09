@@ -78,8 +78,7 @@ type DailyLogWorkflowPanelProps = {
   previousCustomerProfiles: CustomerProfile[];
   isVirtualStore?: boolean;
   storeConfigs?: StoreConfig[];
-  returnTo?: string;
-  /** Called when the user clicks "Cancel edit", so a parent can clear its selected-row state. */
+  /** Called when the user clicks "Cancel edit" or removes an entry, so a parent can clear its selected-row state. */
   onCancelEdit?: () => void;
 };
 
@@ -161,7 +160,6 @@ export function DailyLogWorkflowPanel({
   rows,
   initialEditId,
   previousCustomerProfiles,
-  returnTo = "",
   onCancelEdit
 }: DailyLogWorkflowPanelProps) {
   const defaultStoreId = storeConfigs[0]?.storeId || storeId;
@@ -326,9 +324,18 @@ export function DailyLogWorkflowPanel({
         </div>
         {isEditing ? (
           <div className="button-row">
-            <form action={deleteAction}>
+            <form
+              onSubmit={(event) => {
+                if (!window.confirm(`Remove ${formState.guestName || "this entry"} from the Daily Log?`)) {
+                  event.preventDefault();
+                }
+              }}
+              action={async (formData) => {
+                await deleteAction(formData);
+                onCancelEdit?.();
+              }}
+            >
               <input type="hidden" name="appointmentId" value={formState.appointmentId} />
-              <input type="hidden" name="returnTo" value={returnTo} />
               <SubmitButton className="button secondary destructive" pendingLabel="Removing...">
                 Remove entry
               </SubmitButton>
@@ -351,6 +358,14 @@ export function DailyLogWorkflowPanel({
         }
         className="daily-log-workflow-form"
       >
+        {isEditing ? (
+          <div className="edit-context-banner">
+            <span>Editing</span>
+            <strong>{formState.guestName || "Selected entry"}</strong>
+            <span>{formatDateLabel(formState.appointmentDate)}</span>
+          </div>
+        ) : null}
+
         <input type="hidden" name="storeId" value={selectedStoreId || storeId} />
         <input type="hidden" name="appointmentId" value={formState.appointmentId} />
         <input

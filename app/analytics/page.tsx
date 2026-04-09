@@ -151,8 +151,12 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
                             sortDirection: nextDirection
                           })}
                         >
-                          {label}
-                          {isActive ? (analytics.leaderboardSort.direction === "asc" ? " ↑" : " ↓") : ""}
+                          <span className="sort-button-label">{label}</span>
+                          {isActive ? (
+                            <span className="sort-button-arrow">
+                              {analytics.leaderboardSort.direction === "asc" ? "↑" : "↓"}
+                            </span>
+                          ) : null}
                         </Link>
                       </th>
                     );

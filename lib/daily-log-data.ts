@@ -221,9 +221,6 @@ function getFilterSummary(filters: DailyLogFilters) {
   if (filters.appointmentType) {
     summary += ` • Type: ${filters.appointmentType}`;
   }
-  if (filters.customerName) {
-    summary += ` • Guest: ${filters.customerName}`;
-  }
   return summary;
 }
 
@@ -341,6 +338,7 @@ export async function getDailyLogData(
         storeId: {
           in: shell.storeIds
         },
+        deletedAt: null,
         appointmentDate: {
           gte: todayStart,
           lte: todayEnd
@@ -356,7 +354,8 @@ export async function getDailyLogData(
           where: {
             storeId: {
               in: shell.storeIds
-            }
+            },
+            deletedAt: null
           },
           orderBy: [{ appointmentDate: "desc" }],
           select: { appointmentDate: true }
@@ -367,6 +366,7 @@ export async function getDailyLogData(
         storeId: {
           in: shell.storeIds
         },
+        deletedAt: null,
         appointmentDate: {
           gte: twelveMonthsAgo
         }
@@ -419,12 +419,14 @@ export async function getDailyLogData(
 
   const filters = resolveFilters(effectiveSearchParams);
   const dateRange = getDateRange(filters);
+  const normalizedCustomerSearch = filters.customerName.trim().toLowerCase().replace(/\s+/g, " ");
 
   const appointments = await prisma.appointment.findMany({
     where: {
       storeId: {
         in: shell.storeIds
       },
+      deletedAt: null,
       appointmentDate: {
         gte: dateRange.start,
         lte: dateRange.end
@@ -439,15 +441,6 @@ export async function getDailyLogData(
             visitType: filters.visitType === "WALK_IN" ? VisitType.WALK_IN : VisitType.APPOINTMENT
           }
         : {}),
-      ...(filters.customerName
-        ? {
-            customer: {
-              normalizedFullName: {
-                contains: filters.customerName.trim().toLowerCase().replace(/\s+/g, " ")
-              }
-            }
-          }
-        : {})
     },
     include: {
       customer: true,
@@ -456,7 +449,33 @@ export async function getDailyLogData(
     },
     orderBy: [{ appointmentDate: "desc" }, { timeIn: "desc" }]
   });
+
+  const searchAppointments = normalizedCustomerSearch
+    ? await prisma.appointment.findMany({
+        where: {
+          storeId: {
+            in: shell.storeIds
+          },
+          deletedAt: null,
+          customer: {
+            normalizedFullName: {
+              contains: normalizedCustomerSearch
+            }
+          }
+        },
+        include: {
+          customer: true,
+          assignedStaffMember: true,
+          location: true
+        },
+        orderBy: [{ appointmentDate: "desc" }, { timeIn: "desc" }],
+        take: 100
+      })
+    : [];
   const storeNamesById = new Map(shell.sourceStores.map((entry) => [entry.id, entry.name]));
+  const customerCount = new Set(
+    appointments.map((appointment) => appointment.customer.normalizedFullName).filter(Boolean)
+  ).size;
 
   return {
     store: {
@@ -471,6 +490,7 @@ export async function getDailyLogData(
     },
     filters,
     filterSummary: getFilterSummary(filters),
+    customerCount,
     appointmentTypeOptions: store.options
       .filter((option) => option.kind === "APPOINTMENT_TYPE" || option.kind === "WALK_IN_TYPE")
       .map((option) => option.label),
@@ -571,16 +591,7 @@ export async function getDailyLogData(
       ).map(({ id, name }) => ({ id, name }))
     },
     previousCustomerProfiles: buildPreviousCustomerProfiles(historicalAppointments, storeNamesById),
-    searchRows: historicalAppointments
-      .filter((appointment) => {
-        if (!filters.customerName) return false;
-        return (
-          appointment.customer.normalizedFullName.includes(
-            filters.customerName.trim().toLowerCase().replace(/\s+/g, " ")
-          ) || appointment.customer.fullName.toLowerCase().includes(filters.customerName.trim().toLowerCase())
-        );
-      })
-      .slice(0, 40)
+    searchRows: searchAppointments
       .map((appointment) => ({
         id: appointment.id,
         storeName: storeNamesById.get(appointment.storeId) || store.name,
@@ -641,7 +652,13 @@ export async function getDailyLogData(
             ? "Waiting"
             : "Active",
       comments: appointment.comments || "—",
-      commentsRaw: appointment.comments || ""
+      commentsRaw: appointment.comments || "",
+      incompleteFields: [
+        appointment.assignedStaffMember ? "" : "Assigned",
+        appointment.leadSourceLabel ? "" : "Heard From",
+        appointment.pricePointLabel ? "" : "Price",
+        appointment.sizeLabel ? "" : "Size"
+      ].filter(Boolean)
     }))
   };
 }

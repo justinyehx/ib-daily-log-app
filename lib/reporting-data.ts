@@ -88,6 +88,22 @@ function getAvailableStylistNames(
   return Array.from(names).sort((a, b) => a.localeCompare(b));
 }
 
+async function getReportingStaffMembers(storeIds: string[]) {
+  return prisma.staffMember.findMany({
+    where: {
+      storeId: {
+        in: storeIds
+      },
+      role: StaffRole.STYLIST
+    },
+    select: {
+      fullName: true,
+      role: true
+    },
+    orderBy: [{ fullName: "asc" }]
+  });
+}
+
 export async function getStoreShellData(storeSlug: string) {
   const shell = await getStoreViewShell(storeSlug);
   if (!shell) {
@@ -100,6 +116,7 @@ export async function getStoreShellData(storeSlug: string) {
       storeId: {
         in: shell.storeIds
       },
+      deletedAt: null,
       appointmentDate: {
         gte: startOfDay(today),
         lte: endOfDay(today)
@@ -130,7 +147,8 @@ export async function getAnalyticsData(
       where: {
         storeId: {
           in: shell.storeIds
-        }
+        },
+        deletedAt: null
       },
       orderBy: [{ appointmentDate: "desc" }],
       select: { appointmentDate: true }
@@ -152,27 +170,31 @@ export async function getAnalyticsData(
     typeof searchParams?.sortDirection === "string" ? searchParams.sortDirection : "desc"
   );
 
-  const appointments = await prisma.appointment.findMany({
-    where: {
-      storeId: {
-        in: shell.storeIds
+  const [appointments, reportingStaffMembers] = await Promise.all([
+    prisma.appointment.findMany({
+      where: {
+        storeId: {
+          in: shell.storeIds
+        },
+        deletedAt: null,
+        appointmentDate: {
+          gte: dateRange.start,
+          lte: dateRange.end
+        }
       },
-      appointmentDate: {
-        gte: dateRange.start,
-        lte: dateRange.end
-      }
-    },
-    include: {
-      customer: true,
-      assignedStaffMember: true,
-      location: true
-    },
-    orderBy: [{ appointmentDate: "desc" }, { timeIn: "desc" }]
-  });
+      include: {
+        customer: true,
+        assignedStaffMember: true,
+        location: true
+      },
+      orderBy: [{ appointmentDate: "desc" }, { timeIn: "desc" }]
+    }),
+    getReportingStaffMembers(shell.storeIds)
+  ]);
 
   const filteredAppointments = applyAppointmentFilters(appointments as ReportingAppointment[], filters);
   const stylistNames = getAvailableStylistNames(
-    shell.store.staffMembers,
+    reportingStaffMembers,
     filteredAppointments as ReportingAppointment[]
   );
 
@@ -628,7 +650,7 @@ export async function getAdminViewData(searchParams?: Record<string, string | st
     orderBy: { name: "asc" },
     include: {
       staffMembers: {
-        where: { isActive: true, role: StaffRole.STYLIST },
+        where: { role: StaffRole.STYLIST },
         orderBy: { fullName: "asc" }
       },
       options: {
@@ -644,6 +666,7 @@ export async function getAdminViewData(searchParams?: Record<string, string | st
       const appointments = await prisma.appointment.findMany({
         where: {
           storeId: store.id,
+          deletedAt: null,
           appointmentDate: {
             gte: dateRange.start,
             lte: dateRange.end

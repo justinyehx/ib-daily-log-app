@@ -116,6 +116,7 @@ export async function getDashboardData(storeSlug: string) {
         storeId: {
           in: shell.storeIds
         },
+        deletedAt: null,
         appointmentDate: {
           gte: dayStart,
           lte: dayEnd
@@ -169,6 +170,7 @@ export async function getDashboardData(storeSlug: string) {
         storeId: {
           in: shell.storeIds
         },
+        deletedAt: null,
         appointmentDate: {
           gte: twelveMonthsAgo
         }

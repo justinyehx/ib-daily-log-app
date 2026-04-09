@@ -136,15 +136,6 @@ export function AppShell({ activeView, storeName, session, snapshot, stores = []
         </section>
 
         <div className="sidebar-footer">
-          {showSettingsLink ? (
-            <Link
-              aria-label="Settings"
-              className={`settings-dock-link ${activeView === "settings" ? "active" : ""}`}
-              href="/settings"
-            >
-              <span aria-hidden="true">⚙</span>
-            </Link>
-          ) : null}
           <section className="sidebar-card">
             <p className="sidebar-label">Signed in</p>
             <div className="sidebar-session-grid">
@@ -167,11 +158,22 @@ export function AppShell({ activeView, storeName, session, snapshot, stores = []
                 </div>
               ) : null}
             </div>
-            <form action={signOutDemo}>
-              <SubmitButton className="button secondary" pendingLabel="Signing out...">
-                Sign out
-              </SubmitButton>
-            </form>
+            <div className="sidebar-session-actions">
+              {showSettingsLink ? (
+                <Link
+                  aria-label="Settings"
+                  className={`settings-dock-link ${activeView === "settings" ? "active" : ""}`}
+                  href="/settings"
+                >
+                  <span aria-hidden="true">⚙</span>
+                </Link>
+              ) : null}
+              <form action={signOutDemo}>
+                <SubmitButton className="button secondary" pendingLabel="Signing out...">
+                  Sign out
+                </SubmitButton>
+              </form>
+            </div>
           </section>
         </div>
       </aside>

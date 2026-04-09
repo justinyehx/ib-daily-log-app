@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
@@ -5,6 +6,7 @@ import { SettingsAccessForm } from "@/components/settings-access-form";
 import { SubmitButton } from "@/components/submit-button";
 import { UserAccountForm } from "@/components/user-account-form";
 import { getCurrentSession } from "@/lib/auth";
+import { buildQuery } from "@/lib/query-utils";
 import { getSettingsData } from "@/lib/reporting-data";
 import { addSettingsItem, disableUserAccount, removeSettingsItem, switchDemoStore } from "@/lib/server/settings-actions";
 
@@ -12,7 +14,11 @@ import { addSettingsItem, disableUserAccount, removeSettingsItem, switchDemoStor
 // makes this route dynamic. Settings data (staff, options, users) is
 // config-level data that changes only on explicit user action.
 
-export default async function SettingsPage() {
+type SettingsPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const session = await getCurrentSession();
   if (!session.isAuthenticated) {
     redirect("/login");
@@ -21,6 +27,7 @@ export default async function SettingsPage() {
     redirect(session.role === "STYLIST" ? "/stylists" : "/dashboard");
   }
 
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const settings = await getSettingsData(session.storeSlug);
 
   if (!settings) {
@@ -31,6 +38,10 @@ export default async function SettingsPage() {
     settings.optionGroups.find((group) => group.title === "Stylists")?.items.map((item) => item.label) || [];
   const totalOptionValues = settings.optionGroups.reduce((sum, group) => sum + group.items.length, 0);
   const isAdmin = session.role === "ADMIN";
+  const selectedDropdown =
+    typeof resolvedSearchParams?.dropdown === "string" ? resolvedSearchParams.dropdown : "";
+  const selectedGroup =
+    settings.optionGroups.find((group) => group.formKind === selectedDropdown) || null;
   const accessSummary = isAdmin
     ? "Admin access can change the active role, switch stores, and manage live dropdown values."
     : "Manager access can review store settings here, but only admins can change permissions or switch stores.";
@@ -187,8 +198,8 @@ export default async function SettingsPage() {
                       {isAdmin && user.isActive ? (
                         <form action={disableUserAccount}>
                           <input type="hidden" name="userId" value={user.id} />
-                          <SubmitButton className="button secondary" pendingLabel="Disabling...">
-                            Disable
+                          <SubmitButton className="button secondary" pendingLabel="Updating...">
+                            Inactive
                           </SubmitButton>
                         </form>
                       ) : null}
@@ -206,47 +217,83 @@ export default async function SettingsPage() {
           <div className="panel-head">
             <div>
               <p className="panel-kicker">Dropdowns</p>
-              <h3>Manage stylists and dropdown options</h3>
+              <h3>Choose a dropdown to manage</h3>
             </div>
           </div>
-          <div className="operations-grid">
-            {settings.optionGroups.map((group) => (
-              <section className="operation-card" key={group.title}>
-                <div className="operation-head">
-                  <div>
+          <div className="settings-dropdown-grid">
+            {settings.optionGroups.map((group) => {
+              const isSelected = selectedGroup?.formKind === group.formKind;
+
+              return (
+                <Link
+                  className={`settings-dropdown-card ${isSelected ? "active" : ""}`}
+                  href={buildQuery(resolvedSearchParams, { dropdown: group.formKind })}
+                  key={group.formKind}
+                >
+                  <div className="settings-dropdown-head">
                     <p className="panel-kicker">{group.title}</p>
                     <h3>{group.title}</h3>
                   </div>
-                </div>
-                <form action={addSettingsItem} className="inline-add-form">
-                  <input type="hidden" name="storeId" value={settings.store.id} />
-                  <input type="hidden" name="formKind" value={group.formKind} />
-                  <input disabled={settings.isVirtualStore} name="value" placeholder={group.inputPlaceholder} required />
-                  <SubmitButton className="button" pendingLabel="Adding..." disabled={settings.isVirtualStore}>
-                    Add
-                  </SubmitButton>
-                </form>
-                <div className="operation-list">
-                  {group.items.length ? (
-                    group.items.map((item) => (
-                      <div className="operation-item" key={item.id}>
-                        <span>{item.label}</span>
-                        <form action={removeSettingsItem}>
-                          <input type="hidden" name="formKind" value={group.formKind} />
-                          <input type="hidden" name="itemId" value={item.id} />
-                          <SubmitButton className="button secondary" pendingLabel="Removing..." disabled={settings.isVirtualStore}>
-                            Remove
-                          </SubmitButton>
-                        </form>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="settings-copy">No values loaded yet.</p>
-                  )}
-                </div>
-              </section>
-            ))}
+                  <div className="settings-dropdown-meta">
+                    <span>{group.items.length} values</span>
+                    <strong>{isSelected ? "Open" : "View list"}</strong>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <p className="panel-kicker">Dropdown Values</p>
+              <h3>{selectedGroup ? selectedGroup.title : "Select a dropdown above"}</h3>
+            </div>
+          </div>
+          {selectedGroup ? (
+            <section className="operation-card">
+              <form action={addSettingsItem} className="inline-add-form">
+                <input type="hidden" name="storeId" value={settings.store.id} />
+                <input type="hidden" name="formKind" value={selectedGroup.formKind} />
+                <input
+                  disabled={settings.isVirtualStore}
+                  name="value"
+                  placeholder={selectedGroup.inputPlaceholder}
+                  required
+                />
+                <SubmitButton className="button" pendingLabel="Adding..." disabled={settings.isVirtualStore}>
+                  Add
+                </SubmitButton>
+              </form>
+              <div className="operation-list">
+                {selectedGroup.items.length ? (
+                  selectedGroup.items.map((item) => (
+                    <div className="operation-item" key={item.id}>
+                      <span>{item.label}</span>
+                      <form action={removeSettingsItem}>
+                        <input type="hidden" name="formKind" value={selectedGroup.formKind} />
+                        <input type="hidden" name="itemId" value={item.id} />
+                        <SubmitButton
+                          className="button secondary"
+                          pendingLabel="Updating..."
+                          disabled={settings.isVirtualStore}
+                        >
+                          Inactive
+                        </SubmitButton>
+                      </form>
+                    </div>
+                  ))
+                ) : (
+                  <p className="settings-copy">No values loaded yet.</p>
+                )}
+              </div>
+            </section>
+          ) : (
+            <p className="settings-copy">
+              Click a dropdown card above to open its option list and manage the values there.
+            </p>
+          )}
         </section>
 
         <section className="panel">

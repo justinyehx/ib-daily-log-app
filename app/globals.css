@@ -345,6 +345,17 @@ textarea:disabled {
   gap: 10px;
 }
 
+.sidebar-session-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.sidebar-session-actions form {
+  margin: 0;
+}
+
 .settings-dock-link {
   display: inline-flex;
   align-items: center;
@@ -851,11 +862,11 @@ textarea:disabled {
 }
 
 .report-date-field {
-  max-width: 150px;
+  max-width: 190px;
 }
 
 .report-year-field {
-  max-width: 120px;
+  max-width: 150px;
 }
 
 .button {
@@ -1291,6 +1302,9 @@ textarea:disabled {
 }
 
 .sort-button {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 4px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -1300,10 +1314,21 @@ textarea:disabled {
   text-transform: inherit;
   text-align: left;
   cursor: pointer;
+  line-height: 1.05;
+  white-space: normal;
 }
 
 .sort-button.active {
   color: var(--accent-deep);
+}
+
+.sort-button-label {
+  display: block;
+  max-width: 62px;
+}
+
+.sort-button-arrow {
+  line-height: 1;
 }
 
 .insight-list {
@@ -1430,6 +1455,24 @@ textarea:disabled {
 .compact-table .data-table th,
 .compact-table .data-table td {
   padding: 11px 14px;
+}
+
+.compact-table .leaderboard-table th,
+.compact-table .admin-store-table th,
+.compact-table .admin-leaderboard-table th {
+  padding: 8px 10px;
+  vertical-align: bottom;
+  white-space: normal;
+}
+
+.leaderboard-table,
+.admin-store-table,
+.admin-leaderboard-table {
+  min-width: 980px;
+}
+
+.admin-store-table {
+  min-width: 860px;
 }
 
 .data-table th {
@@ -1663,6 +1706,57 @@ textarea:disabled {
   align-content: start;
 }
 
+.settings-dropdown-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.settings-dropdown-card {
+  display: grid;
+  gap: 18px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: rgba(255, 252, 248, 0.9);
+  box-shadow: var(--shadow);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.settings-dropdown-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(171, 93, 59, 0.24);
+  background: rgba(255, 248, 241, 0.94);
+}
+
+.settings-dropdown-card.active {
+  border-color: rgba(171, 93, 59, 0.28);
+  background: rgba(171, 93, 59, 0.08);
+}
+
+.settings-dropdown-card h3 {
+  margin: 4px 0 0;
+}
+
+.settings-dropdown-head {
+  display: grid;
+  gap: 4px;
+}
+
+.settings-dropdown-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: Arial, Helvetica, sans-serif;
+  color: var(--text-soft);
+}
+
+.settings-dropdown-meta strong {
+  color: var(--accent-deep);
+}
+
 .settings-field {
   display: grid;
   gap: 8px;
@@ -1817,10 +1911,44 @@ textarea:disabled {
 
 .pick-row td {
   background: rgba(255, 249, 242, 0.78);
+  cursor: pointer;
 }
 
 .selected-row td {
   background: rgba(198, 125, 76, 0.1);
+}
+
+.incomplete-row td {
+  background: rgba(178, 74, 48, 0.04);
+}
+
+.pick-row:focus-visible td {
+  outline: 2px solid rgba(171, 93, 59, 0.36);
+  outline-offset: -2px;
+}
+
+.selected-row.incomplete-row td,
+.selected-row td {
+  background: rgba(198, 125, 76, 0.12);
+}
+
+.edit-context-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  margin-bottom: 14px;
+  padding: 9px 12px;
+  border: 1px solid rgba(171, 93, 59, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 249, 242, 0.82);
+  color: var(--text-soft);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.92rem;
+}
+
+.edit-context-banner strong {
+  color: var(--text);
 }
 
 .daily-log-comment-cell {
@@ -1930,7 +2058,8 @@ textarea:disabled {
   .stylist-detail-grid,
   .stylist-breakdown-grid,
   .operations-grid,
-  .settings-grid {
+  .settings-grid,
+  .settings-dropdown-grid {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -1954,7 +2083,8 @@ textarea:disabled {
   .stylist-detail-grid,
   .stylist-breakdown-grid,
   .operations-grid,
-  .settings-grid {
+  .settings-grid,
+  .settings-dropdown-grid {
     grid-template-columns: 1fr;
   }
 

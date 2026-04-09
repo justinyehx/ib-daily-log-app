@@ -2,7 +2,6 @@
 
 import { AppointmentStatus, StoreOptionKind, VisitType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
 import { prisma } from "@/lib/prisma";
 import { normalizeName } from "@/lib/strings";
@@ -265,6 +264,10 @@ export async function updateDailyLogEntry(formData: FormData) {
     throw new Error("Appointment could not be found.");
   }
 
+  if (existingAppointment.deletedAt) {
+    throw new Error("Removed appointments cannot be edited.");
+  }
+
   const {
     appointmentTypeOption,
     assignedStaffMember,
@@ -353,18 +356,16 @@ export async function updateDailyLogEntry(formData: FormData) {
 
 export async function deleteDailyLogEntry(formData: FormData) {
   const appointmentId = asString(formData.get("appointmentId"));
-  const returnTo = asString(formData.get("returnTo"));
 
   if (!appointmentId) {
     throw new Error("Appointment is required.");
   }
 
-  await prisma.appointment.delete({
-    where: { id: appointmentId }
+  await prisma.appointment.update({
+    where: { id: appointmentId },
+    data: { deletedAt: new Date() }
   });
 
   revalidatePath("/dashboard");
   revalidatePath("/daily-log");
-
-  redirect(`/daily-log${returnTo || ""}`);
 }

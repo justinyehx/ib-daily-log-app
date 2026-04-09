@@ -24,28 +24,6 @@ export default async function LoginPage() {
         </div>
 
         <LoginForm stores={stores} />
-
-        <div className="sidebar-card">
-          <div className="summary-label">Internal beta passwords</div>
-          <div className="sidebar-stat-grid">
-            <div className="sidebar-stat">
-              <span>User</span>
-              <strong>user123</strong>
-            </div>
-            <div className="sidebar-stat">
-              <span>Stylist</span>
-              <strong>stylist123</strong>
-            </div>
-            <div className="sidebar-stat">
-              <span>Manager</span>
-              <strong>manager123</strong>
-            </div>
-            <div className="sidebar-stat">
-              <span>Admin</span>
-              <strong>admin123</strong>
-            </div>
-          </div>
-        </div>
       </section>
     </main>
   );

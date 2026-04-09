@@ -57,6 +57,7 @@ export type DailyLogRow = {
   otherSale: string;
   status: string;
   comments: string;
+  incompleteFields: string[];
 };
 
 type WorkflowOptions = {
@@ -81,7 +82,6 @@ type DailyLogTableSectionProps = {
   deleteAction: (formData: FormData) => void | Promise<void>;
   todayDate: string;
   defaultTime: string;
-  returnTo: string;
   initialEditId: string;
   showStoreColumn: boolean;
   rowCount: number;
@@ -99,7 +99,6 @@ export function DailyLogTableSection({
   deleteAction,
   todayDate,
   defaultTime,
-  returnTo,
   initialEditId,
   showStoreColumn,
   rowCount,
@@ -162,7 +161,6 @@ export function DailyLogTableSection({
           onCancelEdit={handleCancelEdit}
           pricePoints={workflowOptions.pricePoints}
           previousCustomerProfiles={previousCustomerProfiles}
-          returnTo={returnTo}
           rows={editableRows}
           sizes={workflowOptions.sizes}
           staffMembers={workflowOptions.staffMembers}
@@ -219,44 +217,72 @@ export function DailyLogTableSection({
             </thead>
             <tbody>
               {rows.length ? (
-                rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className={editId === row.id ? "selected-row" : editMode ? "pick-row" : ""}
-                  >
-                    {showStoreColumn ? <td>{row.storeName}</td> : null}
-                    <td>{row.date}</td>
-                    <td>
-                      {editMode ? (
-                        <button
-                          className="table-edit-link button-link"
-                          onClick={() => selectRow(row.id)}
-                          type="button"
-                        >
-                          {row.guestName}
-                        </button>
-                      ) : (
-                        row.guestName
-                      )}
-                    </td>
-                    <td>{row.assignedTo}</td>
-                    <td>{row.appointmentType}</td>
-                    <td>{row.visitType}</td>
-                    <td>{row.location}</td>
-                    <td>{row.timeIn}</td>
-                    <td>{row.timeOut}</td>
-                    <td>{row.duration}</td>
-                    <td>{row.heardAbout}</td>
-                    <td>{row.pricePoint}</td>
-                    <td>{row.size}</td>
-                    <td>{row.purchased}</td>
-                    <td>{row.otherSale}</td>
-                    <td>{row.status}</td>
-                    <td className="daily-log-comment-cell">
-                      <div className="daily-log-comment-text">{row.comments}</div>
-                    </td>
-                  </tr>
-                ))
+                rows.map((row) => {
+                  const rowIsIncomplete = row.incompleteFields.length > 0;
+
+                  return (
+                    <tr
+                      key={row.id}
+                      aria-label={editMode ? `Edit ${row.guestName}` : undefined}
+                      className={[
+                        editId === row.id ? "selected-row" : "",
+                        editMode ? "pick-row" : "",
+                        rowIsIncomplete ? "incomplete-row" : ""
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                      onClick={editMode ? () => selectRow(row.id) : undefined}
+                      onKeyDown={
+                        editMode
+                          ? (event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                selectRow(row.id);
+                              }
+                            }
+                          : undefined
+                      }
+                      role={editMode ? "button" : undefined}
+                      tabIndex={editMode ? 0 : undefined}
+                      title={rowIsIncomplete ? `Missing: ${row.incompleteFields.join(", ")}` : undefined}
+                    >
+                      {showStoreColumn ? <td>{row.storeName}</td> : null}
+                      <td>{row.date}</td>
+                      <td>
+                        {editMode ? (
+                          <button
+                            className="table-edit-link button-link"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              selectRow(row.id);
+                            }}
+                            type="button"
+                          >
+                            {row.guestName}
+                          </button>
+                        ) : (
+                          row.guestName
+                        )}
+                      </td>
+                      <td>{row.assignedTo}</td>
+                      <td>{row.appointmentType}</td>
+                      <td>{row.visitType}</td>
+                      <td>{row.location}</td>
+                      <td>{row.timeIn}</td>
+                      <td>{row.timeOut}</td>
+                      <td>{row.duration}</td>
+                      <td>{row.heardAbout}</td>
+                      <td>{row.pricePoint}</td>
+                      <td>{row.size}</td>
+                      <td>{row.purchased}</td>
+                      <td>{row.otherSale}</td>
+                      <td>{row.status}</td>
+                      <td className="daily-log-comment-cell">
+                        <div className="daily-log-comment-text">{row.comments}</div>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan={showStoreColumn ? 17 : 16}>

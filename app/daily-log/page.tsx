@@ -6,7 +6,6 @@ import { ReportFiltersForm } from "@/components/report-filters-form";
 import { getCurrentSession } from "@/lib/auth";
 import { getDailyLogData } from "@/lib/daily-log-data";
 import { createDailyLogEntry, deleteDailyLogEntry, updateDailyLogEntry } from "@/lib/server/daily-log-actions";
-import { buildQuery } from "@/lib/query-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +32,6 @@ export default async function DailyLogPage({ searchParams }: DailyLogPageProps) 
   const now = new Date();
   const todayDate = now.toISOString().slice(0, 10);
   const defaultTime = `${`${now.getHours()}`.padStart(2, "0")}:${`${now.getMinutes()}`.padStart(2, "0")}`;
-  const returnTo = buildQuery(resolvedSearchParams, { editId: "", editMode: "" });
 
   return (
     <AppShell
@@ -61,7 +59,7 @@ export default async function DailyLogPage({ searchParams }: DailyLogPageProps) 
             </article>
             <article className="summary-card">
               <div className="summary-label">Customers</div>
-              <div className="summary-value">{dailyLog.rows.length}</div>
+              <div className="summary-value">{dailyLog.customerCount}</div>
             </article>
           </div>
         </section>
@@ -90,7 +88,6 @@ export default async function DailyLogPage({ searchParams }: DailyLogPageProps) 
           deleteAction={deleteDailyLogEntry}
           todayDate={todayDate}
           defaultTime={defaultTime}
-          returnTo={returnTo}
           initialEditId={activeEditId}
           showStoreColumn={dailyLog.store.slug === "galleria-curve"}
           rowCount={dailyLog.rows.length}

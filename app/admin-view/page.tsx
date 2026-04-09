@@ -110,8 +110,12 @@ export default async function AdminViewPage({ searchParams }: AdminViewPageProps
                             storeSortDirection: nextDirection
                           })}
                         >
-                          {label}
-                          {isActive ? (admin.storeSort.direction === "asc" ? " ↑" : " ↓") : ""}
+                          <span className="sort-button-label">{label}</span>
+                          {isActive ? (
+                            <span className="sort-button-arrow">
+                              {admin.storeSort.direction === "asc" ? "↑" : "↓"}
+                            </span>
+                          ) : null}
                         </Link>
                       </th>
                     );
@@ -171,8 +175,12 @@ export default async function AdminViewPage({ searchParams }: AdminViewPageProps
                             sortDirection: nextDirection
                           })}
                         >
-                          {label}
-                          {isActive ? (admin.leaderboardSort.direction === "asc" ? " ↑" : " ↓") : ""}
+                          <span className="sort-button-label">{label}</span>
+                          {isActive ? (
+                            <span className="sort-button-arrow">
+                              {admin.leaderboardSort.direction === "asc" ? "↑" : "↓"}
+                            </span>
+                          ) : null}
                         </Link>
                       </th>
                     );
