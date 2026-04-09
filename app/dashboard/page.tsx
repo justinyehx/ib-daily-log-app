@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/app-shell";
+import { BridalLiveAppointmentsPanel } from "@/components/bridal-live-appointments-panel";
 import { CurrentCustomersPanel } from "@/components/current-customers-panel";
 import { DashboardCheckInPanel } from "@/components/dashboard-check-in-panel";
 import { getCurrentSession } from "@/lib/auth";
@@ -8,6 +9,10 @@ import {
   quickCheckoutCurrentCustomer,
   updateCurrentCustomerStatus
 } from "@/lib/server/dashboard-actions";
+import {
+  markBridalLiveAppointmentNoShow,
+  syncDashboardBridalLiveAppointments
+} from "@/lib/server/bridallive-actions";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +42,20 @@ function formatMinutes(totalMinutes: number) {
   return `${hours}h ${minutes}m`;
 }
 
-export default async function DashboardPage() {
+type DashboardPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+function formatSyncedAt(date: Date | null) {
+  if (!date) return "";
+
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit"
+  }).format(date);
+}
+
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const session = await getCurrentSession();
   if (!session.isAuthenticated) {
     redirect("/login");
@@ -46,7 +64,13 @@ export default async function DashboardPage() {
     redirect("/stylists");
   }
 
-  const dashboard = await getDashboardData(session.storeSlug);
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const selectedBridalLiveAppointmentId =
+    typeof resolvedSearchParams?.bridalLiveAppointmentId === "string"
+      ? resolvedSearchParams.bridalLiveAppointmentId
+      : "";
+
+  const dashboard = await getDashboardData(session.storeSlug, selectedBridalLiveAppointmentId);
 
   if (!dashboard) {
     return (
@@ -119,6 +143,17 @@ export default async function DashboardPage() {
           </div>
         </section>
 
+        <BridalLiveAppointmentsPanel
+          storeSlug={session.storeSlug}
+          appointments={dashboard.bridalLiveAppointments}
+          showStoreColumn={dashboard.store.slug === "galleria-curve"}
+          configured={dashboard.bridalLiveConfigured}
+          lastSyncedAt={formatSyncedAt(dashboard.bridalLiveLastSyncedAt)}
+          selectedAppointmentId={selectedBridalLiveAppointmentId}
+          syncAction={syncDashboardBridalLiveAppointments}
+          markNoShowAction={markBridalLiveAppointmentNoShow}
+        />
+
         <DashboardCheckInPanel
           action={createDashboardCheckIn}
           storeId={dashboard.quickCheckInOptions.storeId}
@@ -137,6 +172,7 @@ export default async function DashboardPage() {
             role: staffMember.role
           }))}
           previousCustomerProfiles={dashboard.previousCustomerProfiles}
+          bridalLivePrefill={dashboard.bridalLivePrefill}
         />
 
         <CurrentCustomersPanel

@@ -42,18 +42,20 @@ enum StoreOptionKind {
 }
 
 model Store {
-  id           String        @id @default(cuid())
-  slug         String        @unique
-  name         String
-  isActive     Boolean       @default(true)
-  users        User[]
-  staffMembers StaffMember[]
-  locations    Location[]
-  customers    Customer[]
-  options      StoreOption[]
-  appointments Appointment[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id                     String                 @id @default(cuid())
+  slug                   String                 @unique
+  name                   String
+  isActive               Boolean                @default(true)
+  bridalLiveSyncedAt     DateTime?
+  users                  User[]
+  staffMembers           StaffMember[]
+  locations              Location[]
+  customers              Customer[]
+  options                StoreOption[]
+  appointments           Appointment[]
+  bridalLiveAppointments BridalLiveAppointment[]
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
 }
 
 model User {
@@ -190,6 +192,7 @@ model Appointment {
   createdByUserId         String?
   createdByUser           User?              @relation("AppointmentCreatedBy", fields: [createdByUserId], references: [id])
   checkedOutAt            DateTime?
+  bridalLiveSource        BridalLiveAppointment? @relation("BridalLiveSource")
   deletedAt               DateTime?
   createdAt               DateTime           @default(now())
   updatedAt               DateTime           @updatedAt
@@ -200,4 +203,47 @@ model Appointment {
   @@index([storeId, visitType, appointmentDate])
   @@index([assignedStaffMemberId, appointmentDate])
   @@index([customerId, appointmentDate])
+}
+
+model BridalLiveAppointment {
+  id                String       @id @default(cuid())
+  storeId           String
+  store             Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  bridalLiveId      String       @unique
+  bridalLiveContactId String?
+  bridalLiveEmployeeId String?
+  guestFirstName    String
+  guestLastName     String
+  guestPhone        String?
+  guestEmail        String?
+  appointmentDate   DateTime     @db.Date
+  scheduledStart    DateTime
+  scheduledEnd      DateTime?
+  appointmentType   String
+  fittingRoom       String?
+  associate         String?
+  eventDate         DateTime?    @db.Date
+  howHeard          String?
+  notes             String?
+  status            String?
+  isConfirmed       Boolean      @default(false)
+  isCheckedIn       Boolean      @default(false)
+  isNoShow          Boolean      @default(false)
+  dailyLogEntryId   String?      @unique
+  dailyLogEntry     Appointment? @relation("BridalLiveSource", fields: [dailyLogEntryId], references: [id])
+  rawPayload        Json?
+  syncedAt          DateTime
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@index([storeId, appointmentDate])
+  @@index([storeId, isNoShow, appointmentDate])
+}
+
+model BridalLiveToken {
+  id        String   @id
+  token     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

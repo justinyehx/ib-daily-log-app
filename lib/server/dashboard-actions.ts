@@ -39,6 +39,7 @@ export async function createDashboardCheckIn(formData: FormData) {
   const timeOutOffsetMinutes = asString(formData.get("timeOutOffsetMinutes"));
   const wearDateInput = asString(formData.get("wearDate"));
   const statusInput = asString(formData.get("status"));
+  const bridalLiveAppointmentId = asString(formData.get("bridalLiveAppointmentId"));
 
   if (!storeId || !guestName || !appointmentTypeOptionId) {
     throw new Error("Store, guest name, and appointment type are required.");
@@ -51,7 +52,8 @@ export async function createDashboardCheckIn(formData: FormData) {
     location,
     leadSourceOption,
     pricePointOption,
-    sizeOption
+    sizeOption,
+    bridalLiveAppointment
   ] =
     await Promise.all([
       prisma.store.findUnique({
@@ -113,6 +115,15 @@ export async function createDashboardCheckIn(formData: FormData) {
               isActive: true
             }
           })
+        : Promise.resolve(null),
+      bridalLiveAppointmentId
+        ? prisma.bridalLiveAppointment.findFirst({
+            where: {
+              id: bridalLiveAppointmentId,
+              storeId,
+              dailyLogEntryId: null
+            }
+          })
         : Promise.resolve(null)
     ]);
 
@@ -128,8 +139,8 @@ export async function createDashboardCheckIn(formData: FormData) {
   const timeOut = buildClientDateTime(baseDate, timeOutInput, timeOutOffsetMinutes);
   const wearDate = wearDateInput ? new Date(`${wearDateInput}T00:00:00`) : null;
 
-  const customer =
-    (await prisma.customer.findFirst({
+  const existingCustomer =
+    await prisma.customer.findFirst({
       where: {
         storeId,
         normalizedFullName: normalizedGuestName
@@ -137,14 +148,26 @@ export async function createDashboardCheckIn(formData: FormData) {
       orderBy: {
         updatedAt: "desc"
       }
-    })) ||
-    (await prisma.customer.create({
-      data: {
-        storeId,
-        fullName: guestName,
-        normalizedFullName: normalizedGuestName
-      }
-    }));
+    });
+
+  const customer = existingCustomer
+    ? await prisma.customer.update({
+        where: { id: existingCustomer.id },
+        data: {
+          fullName: guestName,
+          phone: bridalLiveAppointment?.guestPhone || existingCustomer.phone,
+          email: bridalLiveAppointment?.guestEmail || existingCustomer.email
+        }
+      })
+    : await prisma.customer.create({
+        data: {
+          storeId,
+          fullName: guestName,
+          normalizedFullName: normalizedGuestName,
+          phone: bridalLiveAppointment?.guestPhone || null,
+          email: bridalLiveAppointment?.guestEmail || null
+        }
+      });
 
   const visitType =
     visitTypeInput === VisitType.WALK_IN || appointmentTypeOption.kind === StoreOptionKind.WALK_IN_TYPE
@@ -162,7 +185,7 @@ export async function createDashboardCheckIn(formData: FormData) {
           : null;
   const resolvedStatus = explicitStatus || (shouldWait ? AppointmentStatus.WAITING : AppointmentStatus.ACTIVE);
 
-  await prisma.appointment.create({
+  const appointment = await prisma.appointment.create({
     data: {
       storeId,
       customerId: customer.id,
@@ -189,6 +212,16 @@ export async function createDashboardCheckIn(formData: FormData) {
       checkedOutAt: resolvedStatus === AppointmentStatus.COMPLETE ? timeOut || timeIn : null
     }
   });
+
+  if (bridalLiveAppointment) {
+    await prisma.bridalLiveAppointment.update({
+      where: { id: bridalLiveAppointment.id },
+      data: {
+        dailyLogEntryId: appointment.id,
+        isCheckedIn: true
+      }
+    });
+  }
 
   revalidatePath("/dashboard");
   revalidatePath("/daily-log");

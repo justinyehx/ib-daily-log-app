@@ -889,6 +889,30 @@ textarea:disabled {
   border: 1px solid var(--border);
 }
 
+.button.ghost {
+  background: rgba(255, 251, 246, 0.92);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.small-button {
+  min-width: auto;
+  padding: 9px 12px;
+  border-radius: 12px;
+}
+
+.minor-note {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.bridallive-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .customer-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

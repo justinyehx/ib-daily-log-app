@@ -1,6 +1,7 @@
 "use client";
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 import { PreviousCustomerLookup, type CustomerProfile } from "@/components/previous-customer-lookup";
 import { SubmitButton } from "@/components/submit-button";
@@ -51,6 +52,20 @@ type DashboardCheckInPanelProps = {
   locations: Option[];
   staffMembers: StaffOption[];
   previousCustomerProfiles: CustomerProfile[];
+  bridalLivePrefill?: {
+    bridalLiveAppointmentId: string;
+    storeId: string;
+    guestName: string;
+    visitType: "APPOINTMENT" | "WALK_IN";
+    appointmentTypeOptionId: string;
+    mappedAppointmentTypeLabel: string;
+    assignedStaffMemberId: string;
+    locationId: string;
+    wearDate: string;
+    leadSourceOptionId: string;
+    comments: string;
+    scheduledStartIso: string;
+  } | null;
 };
 
 export function DashboardCheckInPanel({
@@ -67,9 +82,12 @@ export function DashboardCheckInPanel({
   sizes,
   locations,
   staffMembers,
-  previousCustomerProfiles
+  previousCustomerProfiles,
+  bridalLivePrefill = null
 }: DashboardCheckInPanelProps) {
   const formRef = useRef<HTMLFormElement>(null);
+  const router = useRouter();
+  const pathname = usePathname();
   const defaultStoreId = storeConfigs[0]?.storeId || storeId;
   const defaultAppointmentTypeId = useMemo(() => findDefaultTypeId(appointmentTypes), [appointmentTypes]);
   const defaultWalkInTypeId = useMemo(() => findDefaultTypeId(walkInTypes), [walkInTypes]);
@@ -86,6 +104,7 @@ export function DashboardCheckInPanel({
   const [comments, setComments] = useState("");
   const [timeIn, setTimeIn] = useState(defaultTime);
   const [timeTouched, setTimeTouched] = useState(false);
+  const [bridalLiveAppointmentId, setBridalLiveAppointmentId] = useState("");
   const deferredGuestName = useDeferredValue(guestName);
 
   const activeStoreConfig = useMemo(
@@ -135,6 +154,26 @@ export function DashboardCheckInPanel({
 
     return () => window.clearInterval(interval);
   }, [timeTouched]);
+
+  useEffect(() => {
+    if (!bridalLivePrefill) return;
+
+    const scheduledStart = new Date(bridalLivePrefill.scheduledStartIso);
+    const nextTime = `${`${scheduledStart.getHours()}`.padStart(2, "0")}:${`${scheduledStart.getMinutes()}`.padStart(2, "0")}`;
+
+    setSelectedStoreId(bridalLivePrefill.storeId);
+    setGuestName(bridalLivePrefill.guestName);
+    setVisitType(bridalLivePrefill.visitType);
+    setAppointmentTypeOptionId(bridalLivePrefill.appointmentTypeOptionId);
+    setAssignedStaffMemberId(bridalLivePrefill.assignedStaffMemberId);
+    setLocationId(bridalLivePrefill.locationId);
+    setWearDate(bridalLivePrefill.wearDate);
+    setLeadSourceOptionId(bridalLivePrefill.leadSourceOptionId);
+    setComments(bridalLivePrefill.comments);
+    setTimeTouched(true);
+    setTimeIn(nextTime);
+    setBridalLiveAppointmentId(bridalLivePrefill.bridalLiveAppointmentId);
+  }, [bridalLivePrefill]);
 
   useEffect(() => {
     setAppointmentTypeOptionId(
@@ -230,6 +269,7 @@ export function DashboardCheckInPanel({
     setComments("");
     setTimeTouched(false);
     setTimeIn(getCurrentTimeValue());
+    setBridalLiveAppointmentId("");
   }
 
   return (
@@ -245,12 +285,16 @@ export function DashboardCheckInPanel({
         action={async (formData) => {
           await action(formData);
           resetFormToDefaults();
+          if (bridalLiveAppointmentId) {
+            router.replace(pathname);
+          }
         }}
         className="form-grid compact-form dashboard-checkin-form"
         ref={formRef}
       >
         <input type="hidden" name="storeId" value={selectedStoreId || storeId} />
         <input type="hidden" name="appointmentDate" value={todayDate} />
+        <input type="hidden" name="bridalLiveAppointmentId" value={bridalLiveAppointmentId} />
         <input type="hidden" name="timeInOffsetMinutes" value={getOffsetMinutes(todayDate, timeIn)} />
         <input type="hidden" name="status" value="ACTIVE" />
 
