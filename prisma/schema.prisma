@@ -203,6 +203,9 @@ model Appointment {
   @@index([storeId, visitType, appointmentDate])
   @@index([assignedStaffMemberId, appointmentDate])
   @@index([customerId, appointmentDate])
+  @@index([storeId, deletedAt, status, appointmentDate])
+  @@index([storeId, deletedAt, visitType, appointmentDate])
+  @@index([storeId, deletedAt, assignedStaffMemberId, appointmentDate])
 }
 
 model BridalLiveAppointment {
@@ -238,6 +241,7 @@ model BridalLiveAppointment {
 
   @@index([storeId, appointmentDate])
   @@index([storeId, isNoShow, appointmentDate])
+  @@index([storeId, appointmentDate, isNoShow, isCheckedIn])
 }
 
 model BridalLiveToken {

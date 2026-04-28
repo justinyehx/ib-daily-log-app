@@ -1,11 +1,7 @@
 import { AppointmentStatus, VisitType } from "@prisma/client";
 
-import {
-  buildBridalLivePrefillVisitType
-} from "@/lib/bridallive/sync";
-import { resolveBridalLiveDailyLogLabel } from "@/lib/bridallive/type-mapping";
-import { hasBridalLiveStoreConfig } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
+import { runTimed } from "@/lib/server-performance";
 import { normalizeKey } from "@/lib/strings";
 import { getAllStoreChoices, getStoreViewShell } from "@/lib/store-views";
 
@@ -101,12 +97,13 @@ function sortOptionsByYearFrequency<T extends { id: string; label: string }>(
   });
 }
 
-export async function getDashboardData(storeSlug: string, selectedBridalLiveAppointmentId = "") {
-  const shell = await getStoreViewShell(storeSlug);
-  if (!shell) {
-    return null;
-  }
-  const store = shell.store;
+export async function getDashboardData(storeSlug: string) {
+  return runTimed(`getDashboardData:${storeSlug}`, async () => {
+    const shell = await getStoreViewShell(storeSlug);
+    if (!shell) {
+      return null;
+    }
+    const store = shell.store;
 
   const today = new Date();
   const dayStart = startOfDay(today);
@@ -115,7 +112,7 @@ export async function getDashboardData(storeSlug: string, selectedBridalLiveAppo
   const twelveMonthsAgo = new Date(today);
   twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
 
-  const [todaysAppointments, historicalAppointments, bridalLiveAppointments] = await Promise.all([
+  const [todaysAppointments, leadSourceHistory, latestCustomerAppointments, purchasedCustomers] = await Promise.all([
     prisma.appointment.findMany({
       where: {
         storeId: {
@@ -129,6 +126,7 @@ export async function getDashboardData(storeSlug: string, selectedBridalLiveAppo
       },
       select: {
         id: true,
+        customerId: true,
         storeId: true,
         appointmentDate: true,
         status: true,
@@ -181,7 +179,25 @@ export async function getDashboardData(storeSlug: string, selectedBridalLiveAppo
         }
       },
       select: {
+        storeId: true,
+        appointmentDate: true,
+        leadSourceLabel: true
+      }
+    }),
+    prisma.appointment.findMany({
+      where: {
+        storeId: {
+          in: shell.storeIds
+        },
+        deletedAt: null,
+        appointmentDate: {
+          gte: twelveMonthsAgo
+        }
+      },
+      distinct: ["customerId"],
+      select: {
         id: true,
+        customerId: true,
         storeId: true,
         appointmentDate: true,
         appointmentTypeLabel: true,
@@ -210,39 +226,22 @@ export async function getDashboardData(storeSlug: string, selectedBridalLiveAppo
           }
         }
       },
-      orderBy: [{ appointmentDate: "desc" }, { timeIn: "desc" }]
+      orderBy: [{ customerId: "asc" }, { appointmentDate: "desc" }, { timeIn: "desc" }]
     }),
-    prisma.bridalLiveAppointment.findMany({
+    prisma.appointment.findMany({
       where: {
         storeId: {
           in: shell.storeIds
         },
+        deletedAt: null,
         appointmentDate: {
-          gte: dayStart,
-          lte: dayEnd
-        }
+          gte: twelveMonthsAgo
+        },
+        purchased: true
       },
-      orderBy: [{ scheduledStart: "asc" }, { guestLastName: "asc" }],
+      distinct: ["customerId"],
       select: {
-        id: true,
-        storeId: true,
-        guestFirstName: true,
-        guestLastName: true,
-        guestPhone: true,
-        guestEmail: true,
-        appointmentType: true,
-        fittingRoom: true,
-        associate: true,
-        eventDate: true,
-        howHeard: true,
-        notes: true,
-        scheduledStart: true,
-        scheduledEnd: true,
-        isConfirmed: true,
-        isCheckedIn: true,
-        isNoShow: true,
-        dailyLogEntryId: true,
-        syncedAt: true
+        customerId: true
       }
     })
   ]);
@@ -318,7 +317,7 @@ export async function getDashboardData(storeSlug: string, selectedBridalLiveAppo
     ...config,
     leadSources: sortOptionsByYearFrequency(
       config.leadSources,
-      historicalAppointments.filter((appointment) => appointment.storeId === config.storeId)
+      leadSourceHistory.filter((appointment) => appointment.storeId === config.storeId)
     )
   }));
 
@@ -338,7 +337,7 @@ export async function getDashboardData(storeSlug: string, selectedBridalLiveAppo
     ).map(({ id, fullName, role }) => ({ id, fullName, role })),
     leadSources: sortOptionsByYearFrequency(
       dedupeByLabel(storeConfigs.flatMap((entry) => entry.leadSources)),
-      historicalAppointments
+      leadSourceHistory
     ),
     pricePoints: dedupeByLabel(storeConfigs.flatMap((entry) => entry.pricePoints)),
     sizes: dedupeByLabel(storeConfigs.flatMap((entry) => entry.sizes)),
@@ -347,55 +346,6 @@ export async function getDashboardData(storeSlug: string, selectedBridalLiveAppo
     reasonDidNotBuyOptions: dedupeByLabel(storeConfigs.flatMap((entry) => entry.reasonDidNotBuyOptions)),
     locations: dedupeByLabel(storeConfigs.flatMap((entry) => entry.locations))
   };
-
-  const bridalLivePrefillSource = selectedBridalLiveAppointmentId
-    ? bridalLiveAppointments.find((appointment) => appointment.id === selectedBridalLiveAppointmentId) || null
-    : null;
-
-  const bridalLivePrefill = bridalLivePrefillSource
-    ? (() => {
-        const matchingStoreConfig =
-          storeConfigs.find((entry) => entry.storeId === bridalLivePrefillSource.storeId) || null;
-        if (!matchingStoreConfig) return null;
-
-        const mappedDailyLogLabel =
-          resolveBridalLiveDailyLogLabel(bridalLivePrefillSource.appointmentType) || "";
-        const visitType = buildBridalLivePrefillVisitType(bridalLivePrefillSource.appointmentType);
-        const visibleTypeOptions =
-          visitType === "WALK_IN" ? matchingStoreConfig.walkInTypes : matchingStoreConfig.appointmentTypes;
-        const appointmentTypeOptionId =
-          visibleTypeOptions.find((option) => normalizeKey(option.label) === normalizeKey(mappedDailyLogLabel))?.id || "";
-        const assignedStaffMemberId =
-          matchingStoreConfig.staffMembers.find(
-            (staffMember) => normalizeKey(staffMember.fullName) === normalizeKey(bridalLivePrefillSource.associate || "")
-          )?.id || "";
-        const locationId =
-          matchingStoreConfig.locations.find(
-            (location) => normalizeKey(location.label) === normalizeKey(bridalLivePrefillSource.fittingRoom || "")
-          )?.id || "";
-        const leadSourceOptionId =
-          matchingStoreConfig.leadSources.find(
-            (option) => normalizeKey(option.label) === normalizeKey(bridalLivePrefillSource.howHeard || "")
-          )?.id || "";
-
-        return {
-          bridalLiveAppointmentId: bridalLivePrefillSource.id,
-          storeId: matchingStoreConfig.storeId,
-          guestName: `${bridalLivePrefillSource.guestFirstName} ${bridalLivePrefillSource.guestLastName}`.trim(),
-          visitType,
-          appointmentTypeOptionId,
-          mappedAppointmentTypeLabel: mappedDailyLogLabel,
-          assignedStaffMemberId,
-          locationId,
-          wearDate: bridalLivePrefillSource.eventDate
-            ? bridalLivePrefillSource.eventDate.toISOString().slice(0, 10)
-            : "",
-          leadSourceOptionId,
-          comments: bridalLivePrefillSource.notes || "",
-          scheduledStartIso: bridalLivePrefillSource.scheduledStart.toISOString()
-        };
-      })()
-    : null;
 
   const appointmentMix = Array.from(
     todaysAppointments.reduce((acc, appointment) => {
@@ -407,48 +357,18 @@ export async function getDashboardData(storeSlug: string, selectedBridalLiveAppo
     .sort((a, b) => b[1] - a[1])
     .map(([label, value]) => ({ label, value }));
 
-  const latestProfilesByGuest = new Map<
-    string,
-    {
-      id: string;
-      guestName: string;
-      normalizedGuestName: string;
-      lastVisitDate: string;
-      appointmentType: string;
-      visitType: "Appointment" | "Walk-in";
-      assignedTo: string;
-      location: string;
-      wearDate: string;
-      heardAbout: string;
-      pricePoint: string;
-      size: string;
-      purchased: string;
-      otherSale: string;
-      comments: string;
-      hasPreviousPurchase: boolean;
-      storeId: string;
-      storeName: string;
-    }
-  >();
-
-  historicalAppointments.forEach((appointment) => {
-    const normalizedGuestName = appointment.customer.normalizedFullName;
-    if (!normalizedGuestName || latestProfilesByGuest.has(normalizedGuestName)) {
-      return;
-    }
-
-    const hasPreviousPurchase = historicalAppointments.some(
-      (candidate) =>
-        candidate.customer.normalizedFullName === normalizedGuestName && candidate.purchased === true
-    );
-
-    latestProfilesByGuest.set(normalizedGuestName, {
+  const purchasedCustomerIds = new Set(purchasedCustomers.map((appointment) => appointment.customerId));
+  const previousCustomerProfiles = latestCustomerAppointments
+    .filter((appointment) => appointment.customer.normalizedFullName)
+    .map((appointment) => ({
       id: appointment.id,
       guestName: appointment.customer.fullName,
-      normalizedGuestName,
+      normalizedGuestName: appointment.customer.normalizedFullName,
       lastVisitDate: appointment.appointmentDate.toISOString().slice(0, 10),
       appointmentType: appointment.appointmentTypeLabel,
-      visitType: appointment.visitType === VisitType.WALK_IN ? "Walk-in" : "Appointment",
+      visitType: (appointment.visitType === VisitType.WALK_IN ? "Walk-in" : "Appointment") as
+        | "Appointment"
+        | "Walk-in",
       assignedTo: appointment.assignedStaffMember?.fullName || "",
       location: appointment.location?.name || "",
       wearDate: appointment.wearDate ? appointment.wearDate.toISOString().slice(0, 10) : "",
@@ -460,11 +380,37 @@ export async function getDashboardData(storeSlug: string, selectedBridalLiveAppo
       otherSale:
         appointment.otherPurchase === null ? "" : appointment.otherPurchase ? "Yes" : "No",
       comments: appointment.comments || "",
-      hasPreviousPurchase,
+      hasPreviousPurchase: purchasedCustomerIds.has(appointment.customerId),
       storeId: appointment.storeId,
       storeName: shell.sourceStores.find((entry) => entry.id === appointment.storeId)?.name || store.name
-    });
-  });
+    }));
+
+  const comebackCustomerIds = currentCustomers
+    .filter((appointment) => appointment.appointmentTypeLabel.toLowerCase().includes("comeback"))
+    .map((appointment) => appointment.customerId);
+
+  const firstVisitAppointments = comebackCustomerIds.length
+    ? await prisma.appointment.findMany({
+        where: {
+          customerId: {
+            in: comebackCustomerIds
+          },
+          deletedAt: null
+        },
+        distinct: ["customerId"],
+        select: {
+          customerId: true,
+          appointmentDate: true,
+          comments: true,
+          customer: {
+            select: {
+              normalizedFullName: true
+            }
+          }
+        },
+        orderBy: [{ customerId: "asc" }, { appointmentDate: "asc" }, { timeIn: "asc" }]
+      })
+    : [];
 
   const firstVisitByGuest = new Map<
     string,
@@ -473,77 +419,36 @@ export async function getDashboardData(storeSlug: string, selectedBridalLiveAppo
       comment: string;
     }
   >();
+  firstVisitAppointments.forEach((appointment) => {
+    const normalizedGuestName = appointment.customer.normalizedFullName;
+    if (!normalizedGuestName || firstVisitByGuest.has(normalizedGuestName)) {
+      return;
+    }
 
-  historicalAppointments
-    .slice()
-    .reverse()
-    .forEach((appointment) => {
-      const normalizedGuestName = appointment.customer.normalizedFullName;
-      if (!normalizedGuestName || firstVisitByGuest.has(normalizedGuestName)) {
-        return;
-      }
-
-      firstVisitByGuest.set(normalizedGuestName, {
-        date: appointment.appointmentDate.toISOString().slice(0, 10),
-        comment: appointment.comments || ""
-      });
+    firstVisitByGuest.set(normalizedGuestName, {
+      date: appointment.appointmentDate.toISOString().slice(0, 10),
+      comment: appointment.comments || ""
     });
+  });
 
-  return {
-    store: {
-      slug: store.slug,
-      name: store.name
-    },
-    stores: await getAllStoreChoices(),
-    summary: {
-      checkedInToday: todaysAppointments.length,
-      checkedOutToday: checkedOutCount,
-      comebacksScheduled: comebacksScheduledCount,
-      soldToday: soldTodayCount,
-      activeNow: activeNowCount,
-      waiting: waitingCount,
-      averageDuration: averageDurationMinutes
-    },
-    quickCheckInOptions,
-    bridalLiveConfigured: shell.sourceStores.some((sourceStore) => hasBridalLiveStoreConfig(sourceStore.slug)),
-    bridalLiveSyncTargets: shell.sourceStores.map((sourceStore) => ({
-      id: sourceStore.id,
-      slug: sourceStore.slug,
-      name: sourceStore.name
-    })),
-    appointmentMix,
-    bridalLivePrefill,
-    bridalLiveAppointments: bridalLiveAppointments.map((appointment) => {
-      const mappedLabel = resolveBridalLiveDailyLogLabel(appointment.appointmentType);
-      return {
-        id: appointment.id,
-        storeId: appointment.storeId,
-        storeName: shell.sourceStores.find((entry) => entry.id === appointment.storeId)?.name || store.name,
-        guestName: `${appointment.guestFirstName} ${appointment.guestLastName}`.trim(),
-        scheduledTime: formatTime(appointment.scheduledStart),
-        appointmentType: appointment.appointmentType,
-        mappedAppointmentType: mappedLabel,
-        associate: appointment.associate || "Unassigned",
-        fittingRoom: appointment.fittingRoom || "Unassigned",
-        isConfirmed: appointment.isConfirmed,
-        isCheckedIn: Boolean(appointment.dailyLogEntryId) || appointment.isCheckedIn,
-        isNoShow: appointment.isNoShow,
-        dailyLogEntryId: appointment.dailyLogEntryId || "",
-        hasMapping: Boolean(mappedLabel)
-      };
-    }),
-    bridalLiveLastSyncedAt:
-      shell.sourceStores
-        .map((sourceStore) => sourceStore.id)
-        .map(
-          (sourceStoreId) =>
-            bridalLiveAppointments
-              .filter((appointment) => appointment.storeId === sourceStoreId)
-              .sort((a, b) => b.syncedAt.getTime() - a.syncedAt.getTime())[0]?.syncedAt || null
-        )
-        .filter((value): value is Date => Boolean(value))
-        .sort((a, b) => b.getTime() - a.getTime())[0] || null,
-    previousCustomerProfiles: Array.from(latestProfilesByGuest.values()),
+    return {
+      store: {
+        slug: store.slug,
+        name: store.name
+      },
+      stores: await getAllStoreChoices(),
+      summary: {
+        checkedInToday: todaysAppointments.length,
+        checkedOutToday: checkedOutCount,
+        comebacksScheduled: comebacksScheduledCount,
+        soldToday: soldTodayCount,
+        activeNow: activeNowCount,
+        waiting: waitingCount,
+        averageDuration: averageDurationMinutes
+      },
+      quickCheckInOptions,
+      appointmentMix,
+    previousCustomerProfiles,
     todayEntries: todaysAppointments
       .slice()
       .sort((a, b) => a.timeIn.getTime() - b.timeIn.getTime())
@@ -568,7 +473,7 @@ export async function getDashboardData(storeSlug: string, selectedBridalLiveAppo
               ? "Waiting"
               : "Active"
       })),
-    currentCustomers: currentCustomers.map((appointment) => ({
+      currentCustomers: currentCustomers.map((appointment) => ({
       id: appointment.id,
       appointmentDate: appointment.appointmentDate.toISOString().slice(0, 10),
       timeInAt: appointment.timeIn.toISOString(),
@@ -603,6 +508,7 @@ export async function getDashboardData(storeSlug: string, selectedBridalLiveAppo
         appointment.appointmentTypeLabel.toLowerCase().includes("comeback")
           ? firstVisitByGuest.get(appointment.customer.normalizedFullName)?.comment || ""
           : ""
-    }))
-  };
+      }))
+    };
+  });
 }

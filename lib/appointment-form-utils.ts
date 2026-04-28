@@ -8,6 +8,22 @@ export function isAlterationLabel(value: string) {
   return value.toLowerCase().includes("alteration");
 }
 
+/** Returns true when the appointment type should not collect bridal detail fields. */
+export function skipsBridalDetailFields(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return false;
+
+  return (
+    normalized === "presentation" ||
+    normalized === "comeback bride" ||
+    normalized === "comeback bride - same day" ||
+    normalized === "phone order" ||
+    normalized === "pay" ||
+    normalized === "pickup" ||
+    isAlterationLabel(normalized)
+  );
+}
+
 /** Finds the "New Bride" option id, or empty string if not present. */
 export function findDefaultTypeId(options: Array<{ id: string; label: string }>) {
   return options.find((option) => option.label.toLowerCase() === "new bride")?.id || "";

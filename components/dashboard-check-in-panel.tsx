@@ -1,7 +1,6 @@
 "use client";
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
 
 import { PreviousCustomerLookup, type CustomerProfile } from "@/components/previous-customer-lookup";
 import { SubmitButton } from "@/components/submit-button";
@@ -10,7 +9,8 @@ import {
   formatDateLabel,
   getCurrentTimeValue,
   getOffsetMinutes,
-  isAlterationLabel
+  isAlterationLabel,
+  skipsBridalDetailFields
 } from "@/lib/appointment-form-utils";
 
 type Option = {
@@ -52,20 +52,6 @@ type DashboardCheckInPanelProps = {
   locations: Option[];
   staffMembers: StaffOption[];
   previousCustomerProfiles: CustomerProfile[];
-  bridalLivePrefill?: {
-    bridalLiveAppointmentId: string;
-    storeId: string;
-    guestName: string;
-    visitType: "APPOINTMENT" | "WALK_IN";
-    appointmentTypeOptionId: string;
-    mappedAppointmentTypeLabel: string;
-    assignedStaffMemberId: string;
-    locationId: string;
-    wearDate: string;
-    leadSourceOptionId: string;
-    comments: string;
-    scheduledStartIso: string;
-  } | null;
 };
 
 export function DashboardCheckInPanel({
@@ -82,12 +68,9 @@ export function DashboardCheckInPanel({
   sizes,
   locations,
   staffMembers,
-  previousCustomerProfiles,
-  bridalLivePrefill = null
+  previousCustomerProfiles
 }: DashboardCheckInPanelProps) {
   const formRef = useRef<HTMLFormElement>(null);
-  const router = useRouter();
-  const pathname = usePathname();
   const defaultStoreId = storeConfigs[0]?.storeId || storeId;
   const defaultAppointmentTypeId = useMemo(() => findDefaultTypeId(appointmentTypes), [appointmentTypes]);
   const defaultWalkInTypeId = useMemo(() => findDefaultTypeId(walkInTypes), [walkInTypes]);
@@ -104,7 +87,6 @@ export function DashboardCheckInPanel({
   const [comments, setComments] = useState("");
   const [timeIn, setTimeIn] = useState(defaultTime);
   const [timeTouched, setTimeTouched] = useState(false);
-  const [bridalLiveAppointmentId, setBridalLiveAppointmentId] = useState("");
   const deferredGuestName = useDeferredValue(guestName);
 
   const activeStoreConfig = useMemo(
@@ -123,6 +105,7 @@ export function DashboardCheckInPanel({
   const selectedTypeLabel =
     visibleTypeOptions.find((option) => option.id === appointmentTypeOptionId)?.label || "";
   const useSeamstressField = isAlterationLabel(selectedTypeLabel);
+  const hideBridalDetailFields = skipsBridalDetailFields(selectedTypeLabel);
   const visibleStaffMembers = activeStaffMembers.filter((staffMember) =>
     useSeamstressField ? staffMember.role === "SEAMSTRESS" : staffMember.role !== "SEAMSTRESS"
   );
@@ -156,24 +139,13 @@ export function DashboardCheckInPanel({
   }, [timeTouched]);
 
   useEffect(() => {
-    if (!bridalLivePrefill) return;
+    if (!hideBridalDetailFields) return;
 
-    const scheduledStart = new Date(bridalLivePrefill.scheduledStartIso);
-    const nextTime = `${`${scheduledStart.getHours()}`.padStart(2, "0")}:${`${scheduledStart.getMinutes()}`.padStart(2, "0")}`;
-
-    setSelectedStoreId(bridalLivePrefill.storeId);
-    setGuestName(bridalLivePrefill.guestName);
-    setVisitType(bridalLivePrefill.visitType);
-    setAppointmentTypeOptionId(bridalLivePrefill.appointmentTypeOptionId);
-    setAssignedStaffMemberId(bridalLivePrefill.assignedStaffMemberId);
-    setLocationId(bridalLivePrefill.locationId);
-    setWearDate(bridalLivePrefill.wearDate);
-    setLeadSourceOptionId(bridalLivePrefill.leadSourceOptionId);
-    setComments(bridalLivePrefill.comments);
-    setTimeTouched(true);
-    setTimeIn(nextTime);
-    setBridalLiveAppointmentId(bridalLivePrefill.bridalLiveAppointmentId);
-  }, [bridalLivePrefill]);
+    setWearDate("");
+    setLeadSourceOptionId("");
+    setPricePointOptionId("");
+    setSizeOptionId("");
+  }, [hideBridalDetailFields]);
 
   useEffect(() => {
     setAppointmentTypeOptionId(
@@ -269,11 +241,10 @@ export function DashboardCheckInPanel({
     setComments("");
     setTimeTouched(false);
     setTimeIn(getCurrentTimeValue());
-    setBridalLiveAppointmentId("");
   }
 
   return (
-    <section className="panel full-width-panel compact-panel">
+    <section className="panel full-width-panel compact-panel" id="quick-check-in">
       <div className="panel-head">
         <div>
           <p className="panel-kicker">Quick Check-In</p>
@@ -285,16 +256,12 @@ export function DashboardCheckInPanel({
         action={async (formData) => {
           await action(formData);
           resetFormToDefaults();
-          if (bridalLiveAppointmentId) {
-            router.replace(pathname);
-          }
         }}
         className="form-grid compact-form dashboard-checkin-form"
         ref={formRef}
       >
         <input type="hidden" name="storeId" value={selectedStoreId || storeId} />
         <input type="hidden" name="appointmentDate" value={todayDate} />
-        <input type="hidden" name="bridalLiveAppointmentId" value={bridalLiveAppointmentId} />
         <input type="hidden" name="timeInOffsetMinutes" value={getOffsetMinutes(todayDate, timeIn)} />
         <input type="hidden" name="status" value="ACTIVE" />
 
@@ -426,67 +393,71 @@ export function DashboardCheckInPanel({
           />
         </label>
 
-        <label className="field">
-          <span className="field-label">Wear date</span>
-          <input
-            className="input"
-            name="wearDate"
-            type="date"
-            value={wearDate}
-            onChange={(event) => setWearDate(event.target.value)}
-          />
-        </label>
+        {!hideBridalDetailFields ? (
+          <>
+            <label className="field">
+              <span className="field-label">Wear date</span>
+              <input
+                className="input"
+                name="wearDate"
+                type="date"
+                value={wearDate}
+                onChange={(event) => setWearDate(event.target.value)}
+              />
+            </label>
 
-        <label className="field">
-          <span className="field-label">Heard from</span>
-          <select
-            className="select"
-            name="leadSourceOptionId"
-            value={leadSourceOptionId}
-            onChange={(event) => setLeadSourceOptionId(event.target.value)}
-          >
-            <option value="">Select lead source</option>
-            {activeLeadSources.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            <label className="field">
+              <span className="field-label">Heard from</span>
+              <select
+                className="select"
+                name="leadSourceOptionId"
+                value={leadSourceOptionId}
+                onChange={(event) => setLeadSourceOptionId(event.target.value)}
+              >
+                <option value="">Select lead source</option>
+                {activeLeadSources.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-        <label className="field">
-          <span className="field-label">Price point</span>
-          <select
-            className="select"
-            name="pricePointOptionId"
-            value={pricePointOptionId}
-            onChange={(event) => setPricePointOptionId(event.target.value)}
-          >
-            <option value="">Select price point</option>
-            {activePricePoints.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            <label className="field">
+              <span className="field-label">Price point</span>
+              <select
+                className="select"
+                name="pricePointOptionId"
+                value={pricePointOptionId}
+                onChange={(event) => setPricePointOptionId(event.target.value)}
+              >
+                <option value="">Select price point</option>
+                {activePricePoints.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-        <label className="field">
-          <span className="field-label">Size</span>
-          <select
-            className="select"
-            name="sizeOptionId"
-            value={sizeOptionId}
-            onChange={(event) => setSizeOptionId(event.target.value)}
-          >
-            <option value="">Select size</option>
-            {activeSizes.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            <label className="field">
+              <span className="field-label">Size</span>
+              <select
+                className="select"
+                name="sizeOptionId"
+                value={sizeOptionId}
+                onChange={(event) => setSizeOptionId(event.target.value)}
+              >
+                <option value="">Select size</option>
+                {activeSizes.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        ) : null}
 
         <label className="field full-span">
           <span className="field-label">Notes</span>

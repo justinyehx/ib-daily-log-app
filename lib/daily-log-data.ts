@@ -1,6 +1,8 @@
 import { AppointmentStatus, StoreOptionKind, VisitType } from "@prisma/client";
 
+import { dailyLogAppointmentSelect } from "@/lib/appointment-selects";
 import { prisma } from "@/lib/prisma";
+import { runTimed } from "@/lib/server-performance";
 import { normalizeKey } from "@/lib/strings";
 import { getAllStoreChoices, getStoreViewShell } from "@/lib/store-views";
 
@@ -225,8 +227,9 @@ function getFilterSummary(filters: DailyLogFilters) {
 }
 
 function buildPreviousCustomerProfiles(
-  appointments: Array<{
+  latestAppointments: Array<{
     id: string;
+    customerId: string;
     appointmentDate: Date;
     appointmentTypeLabel: string;
     visitType: VisitType;
@@ -249,51 +252,20 @@ function buildPreviousCustomerProfiles(
       name: string;
     } | null;
   }>,
+  purchasedCustomerIds: Set<string>,
   storeNamesById: Map<string, string>
 ) {
-  const purchasedGuestNames = new Set(
-    appointments
-      .filter((appointment) => appointment.purchased === true)
-      .map((appointment) => appointment.customer.normalizedFullName)
-      .filter(Boolean)
-  );
-  const latestByGuest = new Map<
-    string,
-    {
-      id: string;
-      guestName: string;
-      normalizedGuestName: string;
-      lastVisitDate: string;
-      appointmentType: string;
-      visitType: "Appointment" | "Walk-in";
-      assignedTo: string;
-      location: string;
-      wearDate: string;
-      heardAbout: string;
-      pricePoint: string;
-      size: string;
-      purchased: string;
-      otherSale: string;
-      comments: string;
-      hasPreviousPurchase: boolean;
-      storeId: string;
-      storeName: string;
-    }
-  >();
-
-  appointments.forEach((appointment) => {
-    const normalizedGuestName = appointment.customer.normalizedFullName;
-    if (!normalizedGuestName || latestByGuest.has(normalizedGuestName)) {
-      return;
-    }
-
-    latestByGuest.set(normalizedGuestName, {
+  return latestAppointments
+    .filter((appointment) => appointment.customer.normalizedFullName)
+    .map((appointment) => ({
       id: appointment.id,
       guestName: appointment.customer.fullName,
-      normalizedGuestName,
+      normalizedGuestName: appointment.customer.normalizedFullName,
       lastVisitDate: appointment.appointmentDate.toISOString().slice(0, 10),
       appointmentType: appointment.appointmentTypeLabel,
-      visitType: appointment.visitType === VisitType.WALK_IN ? "Walk-in" : "Appointment",
+      visitType: (appointment.visitType === VisitType.WALK_IN ? "Walk-in" : "Appointment") as
+        | "Appointment"
+        | "Walk-in",
       assignedTo: appointment.assignedStaffMember?.fullName || "",
       location: appointment.location?.name || "",
       wearDate: appointment.wearDate ? appointment.wearDate.toISOString().slice(0, 10) : "",
@@ -305,24 +277,22 @@ function buildPreviousCustomerProfiles(
       otherSale:
         appointment.otherPurchase === null ? "" : appointment.otherPurchase ? "Yes" : "No",
       comments: appointment.comments || "",
-      hasPreviousPurchase: purchasedGuestNames.has(normalizedGuestName),
+      hasPreviousPurchase: purchasedCustomerIds.has(appointment.customerId),
       storeId: appointment.storeId,
       storeName: storeNamesById.get(appointment.storeId) || ""
-    });
-  });
-
-  return Array.from(latestByGuest.values());
+    }));
 }
 
 export async function getDailyLogData(
   storeSlug: string,
   searchParams?: Record<string, string | string[] | undefined>
 ) {
-  const shell = await getStoreViewShell(storeSlug);
-  if (!shell) {
-    return null;
-  }
-  const store = shell.store;
+  return runTimed(`getDailyLogData:${storeSlug}`, async () => {
+    const shell = await getStoreViewShell(storeSlug);
+    if (!shell) {
+      return null;
+    }
+    const store = shell.store;
 
   const today = new Date();
   const todayStart = startOfDay(today);
@@ -332,7 +302,7 @@ export async function getDailyLogData(
 
   const needsDateDefault = !hasMeaningfulReportingSearchParams(searchParams);
 
-  const [todaysSummary, latestAppointmentResult, historicalAppointments] = await Promise.all([
+  const [todaysSummary, latestAppointmentResult, leadSourceHistory, latestCustomerAppointments, purchasedCustomers] = await Promise.all([
     prisma.appointment.findMany({
       where: {
         storeId: {
@@ -372,7 +342,25 @@ export async function getDailyLogData(
         }
       },
       select: {
+        storeId: true,
+        appointmentDate: true,
+        leadSourceLabel: true
+      }
+    }),
+    prisma.appointment.findMany({
+      where: {
+        storeId: {
+          in: shell.storeIds
+        },
+        deletedAt: null,
+        appointmentDate: {
+          gte: twelveMonthsAgo
+        }
+      },
+      distinct: ["customerId"],
+      select: {
         id: true,
+        customerId: true,
         storeId: true,
         appointmentDate: true,
         appointmentTypeLabel: true,
@@ -384,9 +372,6 @@ export async function getDailyLogData(
         purchased: true,
         otherPurchase: true,
         wearDate: true,
-        status: true,
-        timeIn: true,
-        timeOut: true,
         customer: {
           select: {
             fullName: true,
@@ -404,7 +389,23 @@ export async function getDailyLogData(
           }
         }
       },
-      orderBy: [{ appointmentDate: "desc" }, { timeIn: "desc" }]
+      orderBy: [{ customerId: "asc" }, { appointmentDate: "desc" }, { timeIn: "desc" }]
+    }),
+    prisma.appointment.findMany({
+      where: {
+        storeId: {
+          in: shell.storeIds
+        },
+        deletedAt: null,
+        appointmentDate: {
+          gte: twelveMonthsAgo
+        },
+        purchased: true
+      },
+      distinct: ["customerId"],
+      select: {
+        customerId: true
+      }
     })
   ]);
 
@@ -421,80 +422,76 @@ export async function getDailyLogData(
   const dateRange = getDateRange(filters);
   const normalizedCustomerSearch = filters.customerName.trim().toLowerCase().replace(/\s+/g, " ");
 
-  const appointments = await prisma.appointment.findMany({
-    where: {
-      storeId: {
-        in: shell.storeIds
-      },
-      deletedAt: null,
-      appointmentDate: {
-        gte: dateRange.start,
-        lte: dateRange.end
-      },
-      ...(filters.appointmentType
-        ? {
-            appointmentTypeLabel: filters.appointmentType
-          }
-        : {}),
-      ...(filters.visitType
-        ? {
-            visitType: filters.visitType === "WALK_IN" ? VisitType.WALK_IN : VisitType.APPOINTMENT
-          }
-        : {}),
-    },
-    include: {
-      customer: true,
-      assignedStaffMember: true,
-      location: true
-    },
-    orderBy: [{ appointmentDate: "desc" }, { timeIn: "desc" }]
-  });
-
-  const searchAppointments = normalizedCustomerSearch
-    ? await prisma.appointment.findMany({
+    const [appointments, searchAppointments, stores] = await Promise.all([
+      prisma.appointment.findMany({
         where: {
           storeId: {
             in: shell.storeIds
           },
           deletedAt: null,
-          customer: {
-            normalizedFullName: {
-              contains: normalizedCustomerSearch
-            }
-          }
+          appointmentDate: {
+            gte: dateRange.start,
+            lte: dateRange.end
+          },
+          ...(filters.appointmentType
+            ? {
+                appointmentTypeLabel: filters.appointmentType
+              }
+            : {}),
+          ...(filters.visitType
+            ? {
+                visitType: filters.visitType === "WALK_IN" ? VisitType.WALK_IN : VisitType.APPOINTMENT
+              }
+            : {})
         },
-        include: {
-          customer: true,
-          assignedStaffMember: true,
-          location: true
-        },
-        orderBy: [{ appointmentDate: "desc" }, { timeIn: "desc" }],
-        take: 100
-      })
-    : [];
+        select: dailyLogAppointmentSelect,
+        orderBy: [{ appointmentDate: "desc" }, { timeIn: "desc" }]
+      }),
+      normalizedCustomerSearch
+        ? prisma.appointment.findMany({
+            where: {
+              storeId: {
+                in: shell.storeIds
+              },
+              deletedAt: null,
+              customer: {
+                normalizedFullName: {
+                  contains: normalizedCustomerSearch
+                }
+              }
+            },
+            select: dailyLogAppointmentSelect,
+            orderBy: [{ appointmentDate: "desc" }, { timeIn: "desc" }],
+            take: 100
+          })
+        : Promise.resolve([]),
+      getAllStoreChoices()
+    ]);
   const storeNamesById = new Map(shell.sourceStores.map((entry) => [entry.id, entry.name]));
   const customerCount = new Set(
     appointments.map((appointment) => appointment.customer.normalizedFullName).filter(Boolean)
   ).size;
 
-  return {
-    store: {
-      slug: store.slug,
-      name: store.name
-    },
-    stores: await getAllStoreChoices(),
-    snapshot: {
-      activeNow: todaysSummary.filter((entry) => entry.status === AppointmentStatus.ACTIVE).length,
-      waiting: todaysSummary.filter((entry) => entry.status === AppointmentStatus.WAITING).length,
-      soldToday: todaysSummary.filter((entry) => entry.purchased === true).length
-    },
-    filters,
-    filterSummary: getFilterSummary(filters),
-    customerCount,
-    appointmentTypeOptions: store.options
-      .filter((option) => option.kind === "APPOINTMENT_TYPE" || option.kind === "WALK_IN_TYPE")
-      .map((option) => option.label),
-    workflowOptions: {
+  const purchasedCustomerIds = new Set(purchasedCustomers.map((appointment) => appointment.customerId));
+
+    return {
+      store: {
+        slug: store.slug,
+        name: store.name
+      },
+      stores,
+      snapshot: {
+        activeNow: todaysSummary.filter((entry) => entry.status === AppointmentStatus.ACTIVE).length,
+        waiting: todaysSummary.filter((entry) => entry.status === AppointmentStatus.WAITING).length,
+        soldToday: todaysSummary.filter((entry) => entry.purchased === true).length
+      },
+      filters,
+      filterSummary: getFilterSummary(filters),
+      customerCount,
+      appointmentTypeOptions: store.options
+        .filter((option) => option.kind === "APPOINTMENT_TYPE" || option.kind === "WALK_IN_TYPE")
+        .map((option) => option.label),
+      workflowOptions: {
       storeId: shell.isVirtualStore ? "" : store.id,
       isVirtualStore: shell.isVirtualStore,
       storeConfigs: shell.sourceStores.map((sourceStore) => ({
@@ -529,7 +526,7 @@ export async function getDailyLogData(
         ...config,
         leadSources: sortOptionsByYearFrequency(
           config.leadSources,
-          historicalAppointments.filter((appointment) => appointment.storeId === config.storeId)
+          leadSourceHistory.filter((appointment) => appointment.storeId === config.storeId)
         )
       })),
       appointmentTypes: dedupeByLabel(
@@ -554,7 +551,7 @@ export async function getDailyLogData(
               .map((option) => ({ id: option.id, label: option.label }))
           )
         ),
-        historicalAppointments
+        leadSourceHistory
       ),
       pricePoints: dedupeByLabel(
         shell.sourceStores.flatMap((sourceStore) =>
@@ -590,9 +587,13 @@ export async function getDailyLogData(
         )
       ).map(({ id, name }) => ({ id, name }))
     },
-    previousCustomerProfiles: buildPreviousCustomerProfiles(historicalAppointments, storeNamesById),
-    searchRows: searchAppointments
-      .map((appointment) => ({
+      previousCustomerProfiles: buildPreviousCustomerProfiles(
+        latestCustomerAppointments,
+        purchasedCustomerIds,
+        storeNamesById
+      ),
+      searchRows: searchAppointments
+        .map((appointment) => ({
         id: appointment.id,
         storeName: storeNamesById.get(appointment.storeId) || store.name,
         date: formatDate(appointment.appointmentDate),
@@ -614,8 +615,8 @@ export async function getDailyLogData(
             : appointment.status === AppointmentStatus.WAITING
               ? "Waiting"
               : "Active"
-      })),
-    rows: appointments.map((appointment) => ({
+        })),
+      rows: appointments.map((appointment) => ({
       id: appointment.id,
       storeName: storeNamesById.get(appointment.storeId) || store.name,
       appointmentDateRaw: appointment.appointmentDate.toISOString().slice(0, 10),
@@ -659,6 +660,7 @@ export async function getDailyLogData(
         appointment.pricePointLabel ? "" : "Price",
         appointment.sizeLabel ? "" : "Size"
       ].filter(Boolean)
-    }))
-  };
+      }))
+    };
+  });
 }

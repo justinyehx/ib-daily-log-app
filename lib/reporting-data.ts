@@ -1,5 +1,6 @@
 import { AppointmentStatus, StaffRole, StoreOptionKind } from "@prisma/client";
 
+import { reportingAppointmentSelect } from "@/lib/appointment-selects";
 import { prisma } from "@/lib/prisma";
 import {
   applyAppointmentFilters,
@@ -21,6 +22,7 @@ import {
   type ReportingAppointment,
   uniqueGuestCounts
 } from "@/lib/reporting";
+import { runTimed } from "@/lib/server-performance";
 import { getStoreViewShell } from "@/lib/store-views";
 
 function hasMeaningfulReportingSearchParams(searchParams?: Record<string, string | string[] | undefined>) {
@@ -138,65 +140,62 @@ export async function getAnalyticsData(
   storeSlug: string,
   searchParams?: Record<string, string | string[] | undefined>
 ) {
-  const shell = await getStoreShellData(storeSlug);
-  if (!shell) return null;
+  return runTimed(`getAnalyticsData:${storeSlug}`, async () => {
+    const shell = await getStoreShellData(storeSlug);
+    if (!shell) return null;
 
-  let effectiveSearchParams = searchParams;
-  if (!hasMeaningfulReportingSearchParams(searchParams)) {
-    const latestAppointment = await prisma.appointment.findFirst({
-      where: {
-        storeId: {
-          in: shell.storeIds
+    let effectiveSearchParams = searchParams;
+    if (!hasMeaningfulReportingSearchParams(searchParams)) {
+      const latestAppointment = await prisma.appointment.findFirst({
+        where: {
+          storeId: {
+            in: shell.storeIds
+          },
+          deletedAt: null
         },
-        deletedAt: null
-      },
-      orderBy: [{ appointmentDate: "desc" }],
-      select: { appointmentDate: true }
-    });
+        orderBy: [{ appointmentDate: "desc" }],
+        select: { appointmentDate: true }
+      });
 
-    if (latestAppointment) {
-      effectiveSearchParams = {
-        ...(searchParams || {}),
-        view: "year",
-        year: String(latestAppointment.appointmentDate.getFullYear())
-      };
+      if (latestAppointment) {
+        effectiveSearchParams = {
+          ...(searchParams || {}),
+          view: "year",
+          year: String(latestAppointment.appointmentDate.getFullYear())
+        };
+      }
     }
-  }
 
-  const filters = resolveReportingFilters(effectiveSearchParams);
-  const dateRange = getDateRange(filters);
-  const sortKey = typeof searchParams?.sortKey === "string" ? searchParams.sortKey : "closeRate";
-  const sortDirection = normalizeSortDirection(
-    typeof searchParams?.sortDirection === "string" ? searchParams.sortDirection : "desc"
-  );
+    const filters = resolveReportingFilters(effectiveSearchParams);
+    const dateRange = getDateRange(filters);
+    const sortKey = typeof searchParams?.sortKey === "string" ? searchParams.sortKey : "closeRate";
+    const sortDirection = normalizeSortDirection(
+      typeof searchParams?.sortDirection === "string" ? searchParams.sortDirection : "desc"
+    );
 
-  const [appointments, reportingStaffMembers] = await Promise.all([
-    prisma.appointment.findMany({
-      where: {
-        storeId: {
-          in: shell.storeIds
+    const [appointments, reportingStaffMembers] = await Promise.all([
+      prisma.appointment.findMany({
+        where: {
+          storeId: {
+            in: shell.storeIds
+          },
+          deletedAt: null,
+          appointmentDate: {
+            gte: dateRange.start,
+            lte: dateRange.end
+          }
         },
-        deletedAt: null,
-        appointmentDate: {
-          gte: dateRange.start,
-          lte: dateRange.end
-        }
-      },
-      include: {
-        customer: true,
-        assignedStaffMember: true,
-        location: true
-      },
-      orderBy: [{ appointmentDate: "desc" }, { timeIn: "desc" }]
-    }),
-    getReportingStaffMembers(shell.storeIds)
-  ]);
+        select: reportingAppointmentSelect,
+        orderBy: [{ appointmentDate: "desc" }, { timeIn: "desc" }]
+      }),
+      getReportingStaffMembers(shell.storeIds)
+    ]);
 
-  const filteredAppointments = applyAppointmentFilters(appointments as ReportingAppointment[], filters);
-  const stylistNames = getAvailableStylistNames(
-    reportingStaffMembers,
-    filteredAppointments as ReportingAppointment[]
-  );
+    const filteredAppointments = applyAppointmentFilters(appointments as ReportingAppointment[], filters);
+    const stylistNames = getAvailableStylistNames(
+      reportingStaffMembers,
+      filteredAppointments as ReportingAppointment[]
+    );
 
   const leaderboard = stylistNames
     .map((name) => stylistMetricsFromAppointments(name, filteredAppointments as ReportingAppointment[], filters))
@@ -311,49 +310,50 @@ export async function getAnalyticsData(
       }))
   );
 
-  return {
-    ...shell,
-    filters,
-    filterSummary: getFilterSummary(filters),
-    filteredAppointmentsCount: filteredAppointments.length,
-    unassignedAppointmentsCount,
-    availableStylistCount: stylistNames.length,
-    appointmentTypeOptions: shell.store.options
-      .filter((option) => option.kind === StoreOptionKind.APPOINTMENT_TYPE || option.kind === StoreOptionKind.WALK_IN_TYPE)
-      .map((option) => option.label),
-    pricePointOptions: shell.store.options
-      .filter((option) => option.kind === StoreOptionKind.PRICE_POINT)
-      .map((option) => option.label),
-    leaderboardSort: {
-      key: sortKey,
-      direction: sortDirection
-    },
-    summaryCards: [
-      { label: "Reporting Window", value: getFilterSummary(filters), compact: true },
-      { label: "Guests Seen", value: String(filteredAppointments.length) },
-      { label: "Brides Seen", value: String(bridesSeen) },
-      { label: "Brides Sold", value: String(bridesSold) },
-      { label: "Store Close Rate", value: formatPercent(storeCloseRate) }
-    ],
-    leaderboard,
-    insights,
-    leadSourceMix: uniqueGuestCounts(filteredAppointments, (appointment) => appointment.leadSourceLabel),
-    bridalPriceMix: uniqueGuestCounts(bridalAppointments, (appointment) => appointment.pricePointLabel).sort(
-      (a, b) =>
-        getPricePointSortValue(a.label) - getPricePointSortValue(b.label) ||
-        b.value - a.value ||
-        a.label.localeCompare(b.label)
-    ),
-    bridalSizeMix: uniqueGuestCounts(bridalAppointments, (appointment) => appointment.sizeLabel).sort(
-      (a, b) =>
-        getSizeSortValue(a.label) - getSizeSortValue(b.label) ||
-        b.value - a.value ||
-        a.label.localeCompare(b.label)
-    ),
-    bridalPriceBreakdown,
-    bridalSizeBreakdown,
-    reasonTallies
-  };
+    return {
+      ...shell,
+      filters,
+      filterSummary: getFilterSummary(filters),
+      filteredAppointmentsCount: filteredAppointments.length,
+      unassignedAppointmentsCount,
+      availableStylistCount: stylistNames.length,
+      appointmentTypeOptions: shell.store.options
+        .filter((option) => option.kind === StoreOptionKind.APPOINTMENT_TYPE || option.kind === StoreOptionKind.WALK_IN_TYPE)
+        .map((option) => option.label),
+      pricePointOptions: shell.store.options
+        .filter((option) => option.kind === StoreOptionKind.PRICE_POINT)
+        .map((option) => option.label),
+      leaderboardSort: {
+        key: sortKey,
+        direction: sortDirection
+      },
+      summaryCards: [
+        { label: "Reporting Window", value: getFilterSummary(filters), compact: true },
+        { label: "Guests Seen", value: String(filteredAppointments.length) },
+        { label: "Brides Seen", value: String(bridesSeen) },
+        { label: "Brides Sold", value: String(bridesSold) },
+        { label: "Store Close Rate", value: formatPercent(storeCloseRate) }
+      ],
+      leaderboard,
+      insights,
+      leadSourceMix: uniqueGuestCounts(filteredAppointments, (appointment) => appointment.leadSourceLabel),
+      bridalPriceMix: uniqueGuestCounts(bridalAppointments, (appointment) => appointment.pricePointLabel).sort(
+        (a, b) =>
+          getPricePointSortValue(a.label) - getPricePointSortValue(b.label) ||
+          b.value - a.value ||
+          a.label.localeCompare(b.label)
+      ),
+      bridalSizeMix: uniqueGuestCounts(bridalAppointments, (appointment) => appointment.sizeLabel).sort(
+        (a, b) =>
+          getSizeSortValue(a.label) - getSizeSortValue(b.label) ||
+          b.value - a.value ||
+          a.label.localeCompare(b.label)
+      ),
+      bridalPriceBreakdown,
+      bridalSizeBreakdown,
+      reasonTallies
+    };
+  });
 }
 
 function buildBreakdownRows(
@@ -404,8 +404,9 @@ export async function getStylistsData(
   storeSlug: string,
   searchParams?: Record<string, string | string[] | undefined>
 ) {
-  const analytics = await getAnalyticsData(storeSlug, searchParams);
-  if (!analytics) return null;
+  return runTimed(`getStylistsData:${storeSlug}`, async () => {
+    const analytics = await getAnalyticsData(storeSlug, searchParams);
+    if (!analytics) return null;
 
   const populatedLeaderboard = analytics.leaderboard.filter((entry) => entry.appointmentsCount > 0);
 
@@ -488,25 +489,26 @@ export async function getStylistsData(
       }))
   );
 
-  return {
-    ...analytics,
-    selectedStylist,
-    selectedMetrics,
-    hasStylistData: analytics.leaderboard.length > 0,
-    detailSummaryCards: selectedMetrics
-      ? [
-          { label: "Reporting Window", value: analytics.filterSummary, compact: true },
-          { label: "Total Appointments", value: String(selectedMetrics.appointmentsCount) },
-          { label: "Bridal Close Rate", value: formatPercent(selectedMetrics.closeRate) },
-          { label: "Average Duration", value: formatMinutes(selectedMetrics.averageDuration) }
-        ]
-      : [],
-    visitTypeBreakdown,
-    priceBreakdown,
-    sizeBreakdown,
-    detailReasonTallies: countByLabel(stylistAppointments, (appointment) => appointment.reasonDidNotBuyLabel),
-    appointmentRows
-  };
+    return {
+      ...analytics,
+      selectedStylist,
+      selectedMetrics,
+      hasStylistData: analytics.leaderboard.length > 0,
+      detailSummaryCards: selectedMetrics
+        ? [
+            { label: "Reporting Window", value: analytics.filterSummary, compact: true },
+            { label: "Total Appointments", value: String(selectedMetrics.appointmentsCount) },
+            { label: "Bridal Close Rate", value: formatPercent(selectedMetrics.closeRate) },
+            { label: "Average Duration", value: formatMinutes(selectedMetrics.averageDuration) }
+          ]
+        : [],
+      visitTypeBreakdown,
+      priceBreakdown,
+      sizeBreakdown,
+      detailReasonTallies: countByLabel(stylistAppointments, (appointment) => appointment.reasonDidNotBuyLabel),
+      appointmentRows
+    };
+  });
 }
 
 export async function getSettingsData(storeSlug: string) {
@@ -635,50 +637,61 @@ export async function getSettingsData(storeSlug: string) {
 }
 
 export async function getAdminViewData(searchParams?: Record<string, string | string[] | undefined>) {
-  const filters = resolveReportingFilters(searchParams);
-  const dateRange = getDateRange(filters);
-  const sortKey = typeof searchParams?.sortKey === "string" ? searchParams.sortKey : "closeRate";
-  const sortDirection = normalizeSortDirection(
-    typeof searchParams?.sortDirection === "string" ? searchParams.sortDirection : "desc"
-  );
-  const storeSortKey = typeof searchParams?.storeSortKey === "string" ? searchParams.storeSortKey : "storeLabel";
-  const storeSortDirection = normalizeSortDirection(
-    typeof searchParams?.storeSortDirection === "string" ? searchParams?.storeSortDirection : "asc"
-  );
-  const stores = await prisma.store.findMany({
-    where: { isActive: true },
-    orderBy: { name: "asc" },
-    include: {
-      staffMembers: {
-        where: { role: StaffRole.STYLIST },
-        orderBy: { fullName: "asc" }
-      },
-      options: {
-        where: { isActive: true },
-        orderBy: [{ kind: "asc" }, { sortOrder: "asc" }, { label: "asc" }]
+  return runTimed("getAdminViewData", async () => {
+    const filters = resolveReportingFilters(searchParams);
+    const dateRange = getDateRange(filters);
+    const sortKey = typeof searchParams?.sortKey === "string" ? searchParams.sortKey : "closeRate";
+    const sortDirection = normalizeSortDirection(
+      typeof searchParams?.sortDirection === "string" ? searchParams.sortDirection : "desc"
+    );
+    const storeSortKey = typeof searchParams?.storeSortKey === "string" ? searchParams.storeSortKey : "storeLabel";
+    const storeSortDirection = normalizeSortDirection(
+      typeof searchParams?.storeSortDirection === "string" ? searchParams?.storeSortDirection : "asc"
+    );
+    const stores = await prisma.store.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      include: {
+        staffMembers: {
+          where: { role: StaffRole.STYLIST },
+          orderBy: { fullName: "asc" }
+        },
+        options: {
+          where: { isActive: true },
+          orderBy: [{ kind: "asc" }, { sortOrder: "asc" }, { label: "asc" }]
+        }
       }
-    }
-  });
-  const filteredStores = filters.store ? stores.filter((store) => store.slug === filters.store) : stores;
+    });
+    const filteredStores = filters.store ? stores.filter((store) => store.slug === filters.store) : stores;
+    const filteredStoreIds = filteredStores.map((store) => store.id);
 
-  const perStoreMetrics = await Promise.all(
-    filteredStores.map(async (store) => {
-      const appointments = await prisma.appointment.findMany({
-        where: {
-          storeId: store.id,
-          deletedAt: null,
-          appointmentDate: {
-            gte: dateRange.start,
-            lte: dateRange.end
-          }
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        storeId: {
+          in: filteredStoreIds
         },
-        include: {
-          customer: true,
-          assignedStaffMember: true,
-          location: true
-        },
-        orderBy: [{ appointmentDate: "desc" }, { timeIn: "desc" }]
-      });
+        deletedAt: null,
+        appointmentDate: {
+          gte: dateRange.start,
+          lte: dateRange.end
+        }
+      },
+      select: reportingAppointmentSelect,
+      orderBy: [{ appointmentDate: "desc" }, { timeIn: "desc" }]
+    });
+
+    const appointmentsByStore = appointments.reduce((acc, appointment) => {
+      const bucket = acc.get(appointment.storeId);
+      if (bucket) {
+        bucket.push(appointment as ReportingAppointment);
+      } else {
+        acc.set(appointment.storeId, [appointment as ReportingAppointment]);
+      }
+      return acc;
+    }, new Map<string, ReportingAppointment[]>());
+
+    const perStoreMetrics = filteredStores.map((store) => {
+      const appointments = appointmentsByStore.get(store.id) || [];
 
       const filteredAppointments = applyAppointmentFilters(appointments as ReportingAppointment[], filters);
       const stylistRows = getAvailableStylistNames(
@@ -727,8 +740,7 @@ export async function getAdminViewData(searchParams?: Record<string, string | st
             )
           : 0
       };
-    })
-  );
+    });
 
   const storeRows = perStoreMetrics.slice().sort((a, b) => {
     const primary = compareSortValues(
@@ -760,63 +772,64 @@ export async function getAdminViewData(searchParams?: Record<string, string | st
   const combinedBridesSold = perStoreMetrics.reduce((sum, metric) => sum + metric.bridesSold, 0);
   const combinedAverageDurationPool = perStoreMetrics.filter((metric) => metric.averageDuration > 0);
 
-  return {
-    filters,
-    filterSummary: getFilterSummary(filters),
-    selectedStoreLabel: stores.find((store) => store.slug === filters.store)?.name || "",
-    stores: storeRows,
-    pricePointOptions: Array.from(
-      new Set(
-        filteredStores.flatMap((store) =>
-          store.options
-            .filter((option) => option.kind === StoreOptionKind.PRICE_POINT)
-            .map((option) => option.label)
+    return {
+      filters,
+      filterSummary: getFilterSummary(filters),
+      selectedStoreLabel: stores.find((store) => store.slug === filters.store)?.name || "",
+      stores: storeRows,
+      pricePointOptions: Array.from(
+        new Set(
+          filteredStores.flatMap((store) =>
+            store.options
+              .filter((option) => option.kind === StoreOptionKind.PRICE_POINT)
+              .map((option) => option.label)
+          )
         )
-      )
-    ).sort((a, b) => a.localeCompare(b)),
-    appointmentTypeOptions: Array.from(
-      new Set(
-        filteredStores.flatMap((store) =>
-          store.options
-            .filter(
-              (option) =>
-                option.kind === StoreOptionKind.APPOINTMENT_TYPE || option.kind === StoreOptionKind.WALK_IN_TYPE
-            )
-            .map((option) => option.label)
-        )
-      )
-    ).sort((a, b) => a.localeCompare(b)),
-    storeOptions: stores.map((store) => ({ value: store.slug, label: store.name })),
-    summaryCards: [
-      { label: "Reporting Window", value: getFilterSummary(filters), compact: true },
-      { label: "Guests Seen", value: String(combinedGuestsSeen) },
-      { label: "Brides Seen", value: String(combinedBridesSeen) },
-      { label: "Brides Sold", value: String(combinedBridesSold) },
-      {
-        label: "Combined Close Rate",
-        value: formatPercent(getCloseRateValue(combinedBridesSeen, combinedBridesSold))
-      },
-      {
-        label: "Average Duration",
-        value: combinedAverageDurationPool.length
-          ? formatMinutes(
-              Math.round(
-                combinedAverageDurationPool.reduce((sum, metric) => sum + metric.averageDuration, 0) /
-                  combinedAverageDurationPool.length
+      ).sort((a, b) => a.localeCompare(b)),
+      appointmentTypeOptions: Array.from(
+        new Set(
+          filteredStores.flatMap((store) =>
+            store.options
+              .filter(
+                (option) =>
+                  option.kind === StoreOptionKind.APPOINTMENT_TYPE || option.kind === StoreOptionKind.WALK_IN_TYPE
               )
-            )
-          : "0m"
+              .map((option) => option.label)
+          )
+        )
+      ).sort((a, b) => a.localeCompare(b)),
+      storeOptions: stores.map((store) => ({ value: store.slug, label: store.name })),
+      summaryCards: [
+        { label: "Reporting Window", value: getFilterSummary(filters), compact: true },
+        { label: "Guests Seen", value: String(combinedGuestsSeen) },
+        { label: "Brides Seen", value: String(combinedBridesSeen) },
+        { label: "Brides Sold", value: String(combinedBridesSold) },
+        {
+          label: "Combined Close Rate",
+          value: formatPercent(getCloseRateValue(combinedBridesSeen, combinedBridesSold))
+        },
+        {
+          label: "Average Duration",
+          value: combinedAverageDurationPool.length
+            ? formatMinutes(
+                Math.round(
+                  combinedAverageDurationPool.reduce((sum, metric) => sum + metric.averageDuration, 0) /
+                    combinedAverageDurationPool.length
+                )
+              )
+            : "0m"
+        }
+      ],
+      leaderboard,
+      totalStoreRows: perStoreMetrics.length,
+      leaderboardSort: {
+        key: sortKey,
+        direction: sortDirection
+      },
+      storeSort: {
+        key: storeSortKey,
+        direction: storeSortDirection
       }
-    ],
-    leaderboard,
-    totalStoreRows: perStoreMetrics.length,
-    leaderboardSort: {
-      key: sortKey,
-      direction: sortDirection
-    },
-    storeSort: {
-      key: storeSortKey,
-      direction: storeSortDirection
-    }
-  };
+    };
+  });
 }

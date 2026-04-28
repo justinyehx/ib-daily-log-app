@@ -4,7 +4,12 @@ import { useState, useTransition } from "react";
 
 import { LiveDuration } from "@/components/live-duration";
 import { SubmitButton } from "@/components/submit-button";
-import { getCurrentTimeValue, getOffsetMinutes, isAlterationLabel } from "@/lib/appointment-form-utils";
+import {
+  getCurrentTimeValue,
+  getOffsetMinutes,
+  isAlterationLabel,
+  skipsBridalDetailFields
+} from "@/lib/appointment-form-utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -114,6 +119,7 @@ export function CustomerCheckoutCard({
   const [isPending, startTransition] = useTransition();
 
   const useSeamstressField = isAlterationLabel(customer.appointmentType);
+  const hideBridalDetailFields = skipsBridalDetailFields(customer.appointmentType);
   const approvalRequired = requiresManagerApproval(customer.appointmentType);
   const showPurchasedField = !useSeamstressField;
   const visibleStaffOptions = staffOptions.filter((staffOption) =>
@@ -263,22 +269,24 @@ export function CustomerCheckoutCard({
             </select>
           </label>
 
-          <label className="field">
-            <FieldLabel required={!customer.pricePointOptionId}>Price</FieldLabel>
-            <select
-              className="select"
-              name="pricePointOptionId"
-              required
-              defaultValue={customer.pricePointOptionId || ""}
-            >
-              <option value="">Select price point</option>
-              {pricePointOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          {!hideBridalDetailFields ? (
+            <label className="field">
+              <FieldLabel required={!customer.pricePointOptionId}>Price</FieldLabel>
+              <select
+                className="select"
+                name="pricePointOptionId"
+                required
+                defaultValue={customer.pricePointOptionId || ""}
+              >
+                <option value="">Select price point</option>
+                {pricePointOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
 
           {!customer.assignedStaffMemberId ? (
             <label className="field">
@@ -294,14 +302,14 @@ export function CustomerCheckoutCard({
             </label>
           ) : null}
 
-          {!customer.wearDateRaw ? (
+          {!hideBridalDetailFields && !customer.wearDateRaw ? (
             <label className="field">
               <FieldLabel required>Wear date</FieldLabel>
               <input className="input" name="wearDate" required type="date" />
             </label>
           ) : null}
 
-          {!customer.leadSourceOptionId ? (
+          {!hideBridalDetailFields && !customer.leadSourceOptionId ? (
             <label className="field">
               <FieldLabel required>Heard from</FieldLabel>
               <select
@@ -320,7 +328,7 @@ export function CustomerCheckoutCard({
             </label>
           ) : null}
 
-          {!customer.sizeOptionId ? (
+          {!hideBridalDetailFields && !customer.sizeOptionId ? (
             <label className="field">
               <FieldLabel required>Size</FieldLabel>
               <select className="select" name="sizeOptionId" required defaultValue="">

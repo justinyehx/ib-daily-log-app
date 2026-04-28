@@ -14,6 +14,7 @@ const APPOINTMENT_TYPE_MAP: Record<string, string> = {
   "alteration 3 wg": "Alteration 3",
   "comeback bride": "Comeback Bride",
   bridesmaid: "New Bridesmaid",
+  "bridal appointment": "New Bride",
   "destination bride": "Destination Bride",
   "mother of bride": "Mother of Bride",
   "new bride": "New Bride",

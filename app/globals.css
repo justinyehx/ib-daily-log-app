@@ -907,6 +907,20 @@ textarea:disabled {
   font-size: 0.82rem;
 }
 
+.inline-callout {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  font-size: 0.94rem;
+}
+
+.error-callout {
+  background: rgba(255, 241, 236, 0.92);
+  border-color: rgba(178, 74, 48, 0.24);
+  color: #8f4029;
+}
+
 .bridallive-actions {
   display: flex;
   gap: 8px;
@@ -1433,6 +1447,54 @@ textarea:disabled {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-soft);
+}
+
+.bridallive-appointments-table {
+  min-width: 860px;
+}
+
+.bridallive-appointments-table th,
+.bridallive-appointments-table td {
+  padding: 10px 12px;
+}
+
+.bridallive-appointments-table th:nth-child(2),
+.bridallive-appointments-table td:nth-child(2) {
+  width: 18%;
+}
+
+.bridallive-appointments-table th:nth-child(3),
+.bridallive-appointments-table td:nth-child(3) {
+  width: 12%;
+}
+
+.bridallive-appointments-table th:nth-child(4),
+.bridallive-appointments-table td:nth-child(4) {
+  width: 24%;
+}
+
+.bridallive-appointments-table th:nth-child(5),
+.bridallive-appointments-table td:nth-child(5) {
+  width: 16%;
+}
+
+.bridallive-appointments-table th:nth-child(6),
+.bridallive-appointments-table td:nth-child(6) {
+  width: 18%;
+}
+
+.bridallive-appointments-table th:nth-child(7),
+.bridallive-appointments-table td:nth-child(7) {
+  width: 12%;
+}
+
+.bridallive-appointments-table .minor-note {
+  margin-top: 2px;
+  white-space: normal;
+}
+
+.bridallive-appointments-table .chip {
+  padding: 8px 10px;
 }
 
 .chip {
