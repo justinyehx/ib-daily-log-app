@@ -28,6 +28,11 @@ const requestedStore = process.argv
   .find((arg) => arg.startsWith("--store="))
   ?.split("=")[1];
 
+const requestedFile = process.argv
+  .slice(2)
+  .find((arg) => arg.startsWith("--file="))
+  ?.split("=")[1];
+
 const APPOINTMENT_TYPE_LABELS = {
   NB: "New Bride",
   CB: "Comeback Bride",
@@ -509,7 +514,7 @@ async function main() {
   }
 
   for (const [slug, filePath] of selectedEntries) {
-    await importStoreAppointments(slug, filePath);
+    await importStoreAppointments(slug, requestedFile || filePath);
   }
 }
 
