@@ -8,7 +8,9 @@ import {
   getCurrentTimeValue,
   getOffsetMinutes,
   isAlterationLabel,
-  skipsBridalDetailFields
+  skipsBridalDetailFields,
+  skipsReasonDidNotBuy,
+  skipsSizeField
 } from "@/lib/appointment-form-utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -54,7 +56,7 @@ export type PricePointOption = { id: string; label: string };
 function purchaseValue(value: boolean | null) {
   if (value === true) return "Yes";
   if (value === false) return "No";
-  return "Yes";
+  return "";
 }
 
 function otherSaleValue(value: boolean | null) {
@@ -109,7 +111,7 @@ export function CustomerCheckoutCard({
   updateStatusAction,
   checkoutAction
 }: CustomerCheckoutCardProps) {
-  const [purchased, setPurchased] = useState<"Yes" | "No">(purchaseValue(customer.purchased));
+  const [purchased, setPurchased] = useState<"" | "Yes" | "No">(purchaseValue(customer.purchased));
   const [cbAppt, setCbAppt] = useState<"No" | "Yes">("No");
   const [timeOutValue, setTimeOutValue] = useState(getCurrentTimeValue());
   const [optimisticStatus, setOptimisticStatus] = useState(customer.status);
@@ -120,6 +122,8 @@ export function CustomerCheckoutCard({
 
   const useSeamstressField = isAlterationLabel(customer.appointmentType);
   const hideBridalDetailFields = skipsBridalDetailFields(customer.appointmentType);
+  const hideSizeField = skipsSizeField(customer.appointmentType);
+  const hideReasonDidNotBuy = skipsReasonDidNotBuy(customer.appointmentType);
   const approvalRequired = requiresManagerApproval(customer.appointmentType);
   const showPurchasedField = !useSeamstressField;
   const visibleStaffOptions = staffOptions.filter((staffOption) =>
@@ -245,9 +249,10 @@ export function CustomerCheckoutCard({
                 className="select"
                 name="purchased"
                 value={purchased}
-                onChange={(event) => setPurchased(event.target.value as "Yes" | "No")}
+                onChange={(event) => setPurchased(event.target.value as "" | "Yes" | "No")}
                 required
               >
+                <option value="">Select</option>
                 <option value="Yes">Yes</option>
                 <option value="No">No</option>
               </select>
@@ -328,7 +333,7 @@ export function CustomerCheckoutCard({
             </label>
           ) : null}
 
-          {!hideBridalDetailFields && !customer.sizeOptionId ? (
+          {!hideSizeField && !customer.sizeOptionId ? (
             <label className="field">
               <FieldLabel required>Size</FieldLabel>
               <select className="select" name="sizeOptionId" required defaultValue="">
@@ -364,17 +369,19 @@ export function CustomerCheckoutCard({
                 </label>
               ) : null}
 
-              <label className={`field ${cbAppt === "Yes" ? "" : "field-span-2"}`}>
-                <FieldLabel>Reason did not buy</FieldLabel>
-                <select className="select" name="reasonDidNotBuyOptionId" required defaultValue="">
-                  <option value="">Select reason</option>
-                  {reasonOptions.map((option) => (
-                    <option key={option.id} value={option.id}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {!hideReasonDidNotBuy ? (
+                <label className={`field ${cbAppt === "Yes" ? "" : "field-span-2"}`}>
+                  <FieldLabel>Reason did not buy</FieldLabel>
+                  <select className="select" name="reasonDidNotBuyOptionId" required defaultValue="">
+                    <option value="">Select reason</option>
+                    {reasonOptions.map((option) => (
+                      <option key={option.id} value={option.id}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
             </>
           ) : null}
 

@@ -10,7 +10,8 @@ import {
   getCurrentTimeValue,
   getOffsetMinutes,
   isAlterationLabel,
-  skipsBridalDetailFields
+  skipsBridalDetailFields,
+  skipsSizeField
 } from "@/lib/appointment-form-utils";
 
 type Option = {
@@ -106,6 +107,7 @@ export function DashboardCheckInPanel({
     visibleTypeOptions.find((option) => option.id === appointmentTypeOptionId)?.label || "";
   const useSeamstressField = isAlterationLabel(selectedTypeLabel);
   const hideBridalDetailFields = skipsBridalDetailFields(selectedTypeLabel);
+  const hideSizeField = skipsSizeField(selectedTypeLabel);
   const visibleStaffMembers = activeStaffMembers.filter((staffMember) =>
     useSeamstressField ? staffMember.role === "SEAMSTRESS" : staffMember.role !== "SEAMSTRESS"
   );
@@ -440,22 +442,24 @@ export function DashboardCheckInPanel({
               </select>
             </label>
 
-            <label className="field">
-              <span className="field-label">Size</span>
-              <select
-                className="select"
-                name="sizeOptionId"
-                value={sizeOptionId}
-                onChange={(event) => setSizeOptionId(event.target.value)}
-              >
-                <option value="">Select size</option>
-                {activeSizes.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {!hideSizeField ? (
+              <label className="field">
+                <span className="field-label">Size</span>
+                <select
+                  className="select"
+                  name="sizeOptionId"
+                  value={sizeOptionId}
+                  onChange={(event) => setSizeOptionId(event.target.value)}
+                >
+                  <option value="">Select size</option>
+                  {activeSizes.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
           </>
         ) : null}
 

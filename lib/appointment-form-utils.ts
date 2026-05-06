@@ -24,6 +24,19 @@ export function skipsBridalDetailFields(value: string) {
   );
 }
 
+/** Returns true when the appointment type should not collect size. */
+export function skipsSizeField(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return false;
+
+  return normalized === "accessories" || skipsBridalDetailFields(normalized);
+}
+
+/** Returns true when checkout should not ask for a reason did not buy. */
+export function skipsReasonDidNotBuy(value: string) {
+  return value.trim().toLowerCase() === "presentation";
+}
+
 /** Finds the "New Bride" option id, or empty string if not present. */
 export function findDefaultTypeId(options: Array<{ id: string; label: string }>) {
   return options.find((option) => option.label.toLowerCase() === "new bride")?.id || "";
