@@ -5,7 +5,13 @@
 export function PageLoadingSkeleton() {
   return (
     <div className="shell">
-      {/* ── Sidebar skeleton ───────────────────────────────────────── */}
+      {/* ── Mobile top bar skeleton (visible only on mobile) ── */}
+      <header className="mobile-topbar">
+        <div style={sk({ width: 140, height: 16, radius: 6 })} />
+        <div style={sk({ width: 44, height: 44, radius: 10 })} />
+      </header>
+
+      {/* ── Sidebar skeleton (visible on desktop, off-screen drawer on mobile) ── */}
       <aside className="sidebar">
         <div className="sidebar-top">
           <div style={sk({ width: 120, height: 10, mb: 6 })} />
@@ -24,9 +30,9 @@ export function PageLoadingSkeleton() {
         </div>
       </aside>
 
-      {/* ── Content skeleton ───────────────────────────────────────── */}
+      {/* ── Content skeleton ── */}
       <main className="content">
-        <div className="page-stack" style={{ padding: "32px 40px", display: "flex", flexDirection: "column", gap: 24 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* Header */}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={sk({ width: 80, height: 12 })} />
@@ -34,15 +40,15 @@ export function PageLoadingSkeleton() {
           </div>
 
           {/* Hero stat bar */}
-          <div style={{ display: "flex", gap: 16 }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} style={sk({ flex: 1, height: 80, radius: 14 })} />
+              <div key={i} style={sk({ flex: 1, height: 76, radius: 14, width: "20%" })} />
             ))}
           </div>
 
           {/* Main panels */}
-          <div style={sk({ width: "100%", height: 240, radius: 20 })} />
-          <div style={sk({ width: "100%", height: 320, radius: 20 })} />
+          <div style={sk({ width: "100%", height: 220, radius: 20 })} />
+          <div style={sk({ width: "100%", height: 300, radius: 20 })} />
         </div>
       </main>
     </div>

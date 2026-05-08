@@ -15,6 +15,7 @@ type ReportFiltersFormProps = {
     pricePoint?: string;
     visitType?: string;
     appointmentType?: string;
+    staffView?: string;
   };
   appointmentTypeOptions: string[];
   pricePointOptions?: string[];
@@ -23,6 +24,7 @@ type ReportFiltersFormProps = {
   showPricePoint?: boolean;
   showStore?: boolean;
   showTwoWeek?: boolean;
+  showEmployeeView?: boolean;
 };
 
 export function ReportFiltersForm({
@@ -33,7 +35,8 @@ export function ReportFiltersForm({
   showVisitType = true,
   showPricePoint = true,
   showStore = false,
-  showTwoWeek = false
+  showTwoWeek = false,
+  showEmployeeView = false
 }: ReportFiltersFormProps) {
   const [view, setView] = useState<"day" | "week" | "twoWeek" | "month" | "year">(filters.view);
   const router = useRouter();
@@ -57,7 +60,8 @@ export function ReportFiltersForm({
       "pricePoint",
       "visitType",
       "appointmentType",
-      "stylist"
+      "stylist",
+      "staffView"
     ].forEach((key) => params.delete(key));
 
     formData.forEach((value, key) => {
@@ -177,6 +181,16 @@ export function ReportFiltersForm({
           ))}
         </select>
       </label>
+
+      {showEmployeeView ? (
+        <label className="field">
+          <span className="field-label">Employees</span>
+          <select className="select" name="staffView" defaultValue={filters.staffView || ""}>
+            <option value="">Stylists only</option>
+            <option value="all">All employees</option>
+          </select>
+        </label>
+      ) : null}
 
       <div className="form-actions report-apply">
         <button aria-busy={isPending} className={`button${isPending ? " is-pending" : ""}`} disabled={isPending} type="submit">

@@ -59,8 +59,9 @@ export default async function AdminViewPage({ searchParams }: AdminViewPageProps
           </div>
           <ReportFiltersForm
             appointmentTypeOptions={admin.appointmentTypeOptions}
-            filters={admin.filters}
+            filters={{ ...admin.filters, staffView: admin.staffView }}
             pricePointOptions={admin.pricePointOptions}
+            showEmployeeView
             showStore
             showTwoWeek
             storeOptions={admin.storeOptions}

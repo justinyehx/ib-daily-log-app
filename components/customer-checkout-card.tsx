@@ -118,6 +118,7 @@ export function CustomerCheckoutCard({
   const [timeOutValue, setTimeOutValue] = useState(getCurrentTimeValue());
   const [optimisticStatus, setOptimisticStatus] = useState(customer.status);
   const [isHidden, setIsHidden] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [approvalPassword, setApprovalPassword] = useState("");
   const [approvalError, setApprovalError] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -142,7 +143,41 @@ export function CustomerCheckoutCard({
   }
 
   return (
-    <article className="customer-card">
+    <article className={`customer-card${isExpanded ? " expanded" : ""}`}>
+
+      {/* ── Mobile compact summary (tap to expand) ── */}
+      <button
+        className="customer-card-summary"
+        onClick={() => setIsExpanded(true)}
+        type="button"
+        aria-label={`View details for ${customer.guestName}`}
+      >
+        <div className="ccs-top">
+          <span className="ccs-name">{customer.guestName}</span>
+          <span className={`ccs-status-dot ${optimisticStatus === "WAITING" ? "waiting" : "active"}`} />
+        </div>
+        <div className="ccs-row">
+          <LiveDuration startAt={customer.timeInAt} />
+          <span className="ccs-sep">·</span>
+          <span>{optimisticStatus === "WAITING" ? "Waiting" : "Active"}</span>
+        </div>
+        <div className="ccs-row ccs-meta-row">
+          <span className="ccs-type">{customer.appointmentType}</span>
+          {customer.assignedTo !== "Unassigned" ? (
+            <span className="ccs-staff">{customer.assignedTo}</span>
+          ) : null}
+        </div>
+      </button>
+
+      {/* ── Mobile collapse button (shown when expanded) ── */}
+      <button
+        className="customer-card-collapse-btn"
+        onClick={() => setIsExpanded(false)}
+        type="button"
+      >
+        ↑ Collapse
+      </button>
+
       <div className="customer-top">
         <div>
           <h4 className="customer-name">{customer.guestName}</h4>

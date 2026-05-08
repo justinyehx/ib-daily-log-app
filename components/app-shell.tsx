@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 
 import { SubmitButton } from "@/components/submit-button";
@@ -5,6 +8,8 @@ import { TimezoneSync } from "@/components/timezone-sync";
 import type { CurrentSession } from "@/lib/auth";
 import { signOutDemo } from "@/lib/server/auth-actions";
 import { switchDemoStore } from "@/lib/server/settings-actions";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type AppShellProps = {
   activeView: "dashboard" | "daily-log" | "analytics" | "stylists" | "settings" | "admin-view";
@@ -41,7 +46,11 @@ const ROLE_LABELS: Record<CurrentSession["role"], string> = {
   ADMIN: "Admin"
 };
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function AppShell({ activeView, storeName, session, snapshot, stores = [], children }: AppShellProps) {
+  const [navOpen, setNavOpen] = useState(false);
+
   const visibleNavItems = navItems.filter((item) => {
     if (session.role === "USER") {
       return item.key === "dashboard" || item.key === "daily-log";
@@ -58,16 +67,63 @@ export function AppShell({ activeView, storeName, session, snapshot, stores = []
     return true;
   });
   const showSettingsLink = session.role === "ADMIN" || session.role === "MANAGER";
+  const totalInStore = snapshot.activeNow + snapshot.waiting;
 
   return (
     <div className="shell">
-      <aside className="sidebar">
+      {/* ── Mobile top bar ── */}
+      <header className="mobile-topbar">
+        <div className="mobile-topbar-brand">
+          <span className="mobile-topbar-store">{storeName}</span>
+          {totalInStore > 0 ? (
+            <span className="mobile-topbar-badge">{totalInStore} in store</span>
+          ) : null}
+        </div>
+        <button
+          className={`hamburger-btn${navOpen ? " open" : ""}`}
+          onClick={() => setNavOpen((o) => !o)}
+          aria-label={navOpen ? "Close navigation" : "Open navigation"}
+          aria-expanded={navOpen}
+          type="button"
+        >
+          <span aria-hidden="true" />
+          <span aria-hidden="true" />
+          <span aria-hidden="true" />
+        </button>
+      </header>
+
+      {/* ── Drawer backdrop ── */}
+      {navOpen ? (
+        <div
+          className="nav-backdrop"
+          onClick={() => setNavOpen(false)}
+          aria-hidden="true"
+        />
+      ) : null}
+
+      {/* ── Sidebar / Drawer ── */}
+      <aside className={`sidebar${navOpen ? " mobile-open" : ""}`}>
         <div className="sidebar-top">
-          <p className="eyebrow">Bridal Operations</p>
-          <div className="brand-block">
-            <h1 className="brand-title">Impression Bridal Daily Log</h1>
-            <span className="brand-store">{storeName}</span>
+          <div className="sidebar-top-row">
+            <div>
+              <p className="eyebrow">Bridal Operations</p>
+              <div className="brand-block">
+                <h1 className="brand-title">Impression Bridal Daily Log</h1>
+                <span className="brand-store">{storeName}</span>
+              </div>
+            </div>
+            <button
+              className="drawer-close"
+              onClick={() => setNavOpen(false)}
+              aria-label="Close navigation"
+              type="button"
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+                <path d="M2 2l14 14M16 2L2 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </button>
           </div>
+
           <div className="store-switcher">
             <p className="sidebar-label">Store View</p>
             <div className="store-switcher-row">
@@ -107,6 +163,7 @@ export function AppShell({ activeView, storeName, session, snapshot, stores = []
                 className={`nav-link ${activeView === item.key ? "active" : ""}`}
                 href={item.href}
                 key={item.key}
+                onClick={() => setNavOpen(false)}
               >
                 {item.label}
               </Link>
@@ -165,6 +222,7 @@ export function AppShell({ activeView, storeName, session, snapshot, stores = []
                   aria-label="Settings"
                   className={`settings-dock-link ${activeView === "settings" ? "active" : ""}`}
                   href="/settings"
+                  onClick={() => setNavOpen(false)}
                 >
                   <span aria-hidden="true">⚙</span>
                 </Link>

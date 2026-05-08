@@ -89,6 +89,15 @@ textarea:disabled {
   gap: 6px;
 }
 
+/* The row that wraps brand + close button — close button hidden on desktop */
+.sidebar-top-row {
+  display: block;
+}
+
+.drawer-close {
+  display: none; /* shown via media query in drawer mode */
+}
+
 .store-switcher {
   display: grid;
   gap: 6px;
@@ -2172,37 +2181,298 @@ textarea:disabled {
   width: min(100%, 520px);
 }
 
-@media (max-width: 1180px) {
+/* ═══════════════════════════════════════════════════════════════════
+   MOBILE NAV — sidebar becomes a slide-in drawer at ≤960px
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Drawer-related elements hidden on desktop */
+.mobile-topbar,
+.hamburger-btn,
+.drawer-close,
+.nav-backdrop {
+  display: none;
+}
+
+/* ── Customer card compact summary (hidden on desktop) ── */
+.customer-card-summary {
+  display: none; /* shown via media query on mobile */
+  flex-direction: column;
+  gap: 5px;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  width: 100%;
+  color: inherit;
+}
+
+.ccs-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ccs-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.ccs-status-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ccs-status-dot.active {
+  background: var(--accent);
+}
+
+.ccs-status-dot.waiting {
+  background: #e4b84a;
+}
+
+.ccs-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: var(--text-soft);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.ccs-sep {
+  opacity: 0.5;
+}
+
+.ccs-meta-row {
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+
+.ccs-type {
+  font-weight: 500;
+  color: var(--accent-deep);
+  font-size: 0.78rem;
+}
+
+.ccs-staff {
+  font-size: 0.78rem;
+  color: var(--text-soft);
+}
+
+.ccs-staff::before {
+  content: "· ";
+}
+
+/* ── Collapse button (hidden on desktop) ── */
+.customer-card-collapse-btn {
+  display: none; /* shown via media query on mobile */
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(76, 50, 33, 0.06);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--text-soft);
+  font-weight: 500;
+  width: 100%;
+  transition: background 0.15s;
+}
+
+.customer-card-collapse-btn:hover {
+  background: rgba(76, 50, 33, 0.1);
+  color: var(--text);
+}
+
+@media (max-width: 960px) {
+  /* ── Shell: single-column, top bar takes the header role ── */
   .shell {
-    grid-template-columns: 1fr;
+    display: block; /* sidebar is position:fixed so it's out of flow */
+    min-height: 100vh;
   }
 
-  .sidebar {
-    position: static;
-    height: auto;
-    border-right: 0;
+  /* ── Mobile top bar ── */
+  .mobile-topbar {
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 20px;
+    background: rgba(252, 246, 238, 0.97);
+    backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--border);
+    min-height: 56px;
   }
 
+  .mobile-topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .mobile-topbar-store {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--accent-deep);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mobile-topbar-badge {
+    padding: 3px 9px;
+    border-radius: 99px;
+    background: rgba(171, 93, 59, 0.12);
+    color: var(--accent-deep);
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  /* ── Hamburger button ── */
+  .hamburger-btn {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    padding: 9px 10px;
+    flex-shrink: 0;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .hamburger-btn span {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: var(--text);
+    border-radius: 2px;
+    transition: transform 0.22s ease, opacity 0.22s ease;
+    transform-origin: center;
+  }
+
+  .hamburger-btn.open span:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+  }
+
+  .hamburger-btn.open span:nth-child(2) {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+
+  .hamburger-btn.open span:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+  }
+
+  /* ── Sidebar: fixed drawer off-screen by default ── */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 300px;
+    max-width: 88vw;
+    height: 100%;
+    height: 100dvh;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 300;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+    border-bottom: none;
+    /* keep existing background/blur from base styles */
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  /* ── Backdrop ── */
+  .nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(30, 15, 5, 0.48);
+    z-index: 200;
+    animation: fadeInBackdrop 0.2s ease;
+  }
+
+  @keyframes fadeInBackdrop {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* ── Drawer close button (top-right of sidebar) ── */
+  .drawer-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    color: var(--text-soft);
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+
+  .drawer-close:hover {
+    background: rgba(76, 50, 33, 0.07);
+    color: var(--text);
+  }
+
+  /* ── sidebar-top-row: brand + close button side by side ── */
+  .sidebar-top-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  /* ── Content: account for sticky mobile topbar ── */
+  .content {
+    padding-top: 20px; /* topbar is sticky, not covering content */
+  }
+
+  /* ── Layout grids that should collapse on tablet/mobile ── */
   .summary-grid,
   .stats-grid,
-  .two-up,
-  .customer-grid,
-  .current-customer-list,
-  .customer-checkout-grid,
-  .customer-checkout-form,
-  .filters-grid,
-  .subgrid-two,
   .hero-band,
   .hero-band-stats,
-  .dense-form,
-  .compact-form,
-  .dashboard-grid,
-  .hero,
-  .hero-panel,
-  .lookup-grid,
-  .previous-lookup-list {
+  .dashboard-grid {
     grid-template-columns: 1fr;
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .stylist-grid,
@@ -2215,21 +2485,134 @@ textarea:disabled {
     grid-template-columns: 1fr 1fr;
   }
 
+  /* ── Two-col form grids: stay 2 cols on tablet, collapse on phone ── */
+  .filters-grid,
+  .subgrid-two,
+  .dense-form,
+  .compact-form,
+  .lookup-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* ── Customer cards: 2-column compact grid on tablet/mobile ── */
+  .customer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .current-customer-list {
+    grid-template-columns: 1fr;
+  }
+
+  /* ── Compact card: tighter padding, min tap height ── */
+  .customer-card:not(.expanded) {
+    padding: 13px 14px;
+    min-height: 88px;
+    cursor: pointer;
+  }
+
+  /* ── Expanded card spans both columns ── */
+  .customer-card.expanded {
+    grid-column: 1 / -1;
+  }
+
+  /* ── Compact summary: shown on mobile when NOT expanded ── */
+  .customer-card:not(.expanded) .customer-card-summary {
+    display: flex;
+  }
+
+  /* ── Detail elements: hidden on mobile when NOT expanded ── */
+  .customer-card:not(.expanded) .customer-top,
+  .customer-card:not(.expanded) .pill-row,
+  .customer-card:not(.expanded) .customer-meta,
+  .customer-card:not(.expanded) .customer-checkout-grid {
+    display: none;
+  }
+
+  /* ── Collapse button: shown on mobile when expanded ── */
+  .customer-card.expanded .customer-card-collapse-btn {
+    display: flex;
+  }
+
+  /* ── Checkout form: 2 columns on tablet ── */
+  .customer-checkout-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .field-span-3 {
+    grid-column: 1 / -1;
+  }
+
   .field-span-2 {
-    grid-column: span 1;
+    grid-column: span 2;
+  }
+
+  /* ── Tables: horizontal scroll ── */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── Check-in panel two-col form stays 2 cols on tablet ── */
+  .two-up {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
-@media (max-width: 720px) {
-  .content,
-  .sidebar {
-    padding: 18px;
+/* ═══════════════════════════════════════════════════════════════════
+   PHONE — single-column everything at ≤640px
+   ═══════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 640px) {
+  .content {
+    padding: 16px;
+    padding-top: 16px;
   }
 
+  .page-stack {
+    gap: 16px;
+  }
+
+  .panel {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  /* Topbar: smaller heading */
+  .topbar h2 {
+    font-size: 1.45rem;
+  }
+
+  /* Stats: 2-col grid */
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Hero: single column, hero-panel 2 cols */
+  .hero,
+  .hero-band,
+  .hero-band-stats,
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* All multi-col form layouts → single column */
+  .two-up,
+  .filters-grid,
+  .subgrid-two,
+  .dense-form,
+  .compact-form,
+  .lookup-grid,
+  .previous-lookup-list,
   .form-grid {
     grid-template-columns: 1fr;
   }
 
+  /* Stylist/settings grids */
   .report-controls,
   .stylist-grid,
   .stylist-detail-grid,
@@ -2240,16 +2623,140 @@ textarea:disabled {
     grid-template-columns: 1fr;
   }
 
+  /* Checkout form: 2 columns (compact but usable) */
+  .customer-checkout-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .field-span-2 {
+    grid-column: span 2;
+  }
+
+  /* Touch-friendly buttons */
+  .button {
+    min-height: 46px;
+    padding: 11px 16px;
+  }
+
+  .customer-action-button {
+    min-height: 50px;
+    min-width: unset;
+    flex: 1;
+  }
+
+  .customer-action-row {
+    gap: 8px;
+  }
+
+  /* Previous/history actions */
+  .previous-lookup-top,
+  .previous-lookup-head,
+  .customer-action-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
   .page-header,
   .panel-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 10px;
   }
 
-  .previous-lookup-top,
-  .previous-lookup-head,
-  .customer-action-row {
+  /* Topbar: stack on very small screens */
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  /* Report filter toolbar */
+  .report-toolbar {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  /* Panels with panel-head flex row */
+  .panel-head {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  /* Tables: don't squish text on small screens */
+  .proto-table th,
+  .proto-table td,
+  .data-table th,
+  .data-table td {
+    padding: 10px 10px;
+    font-size: 0.82rem;
+  }
+
+  /* Inline add form in settings: stack on phone */
+  .inline-add-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .inline-add-form input,
+  .inline-add-form select {
+    flex: none;
+    width: 100%;
+  }
+
+  /* Staff edit form: stack on phone */
+  .staff-edit-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .staff-edit-actions {
+    width: 100%;
+  }
+
+  .staff-edit-actions .button {
+    flex: 1;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   LEGACY wide-screen collapse (≤1180px) — only layout, no sidebar
+   ═══════════════════════════════════════════════════════════════════ */
+
+@media (min-width: 961px) and (max-width: 1180px) {
+  /* Shell stays as sidebar grid on this range */
+  .summary-grid,
+  .two-up,
+  .customer-checkout-grid,
+  .customer-checkout-form,
+  .hero-band,
+  .hero-band-stats,
+  .dense-form,
+  .compact-form,
+  .dashboard-grid,
+  .lookup-grid,
+  .previous-lookup-list {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .hero-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stylist-grid,
+  .report-controls,
+  .stylist-detail-grid,
+  .stylist-breakdown-grid,
+  .settings-grid,
+  .settings-dropdown-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .field-span-2 {
+    grid-column: span 1;
   }
 }

@@ -75,28 +75,35 @@ function compareSortValues(a: string | number, b: string | number, direction: "a
 
 function getAvailableStylistNames(
   staffMembers: Array<{ fullName: string; role: StaffRole }>,
-  appointments: ReportingAppointment[]
+  appointments: ReportingAppointment[],
+  includeAllRoles = false
 ) {
   const names = new Set(
-    staffMembers.filter((member) => member.role === StaffRole.STYLIST).map((member) => member.fullName)
+    staffMembers
+      .filter((member) => includeAllRoles || member.role === StaffRole.STYLIST)
+      .map((member) => member.fullName)
   );
 
+  // Also surface anyone who appears on an appointment within the date range
+  // (catches staff added after the reporting window or legacy records)
   appointments.forEach((appointment) => {
-    if (appointment.assignedStaffMember?.fullName) {
-      names.add(appointment.assignedStaffMember.fullName);
+    const member = appointment.assignedStaffMember;
+    if (!member?.fullName) return;
+    if (includeAllRoles || member.role === StaffRole.STYLIST) {
+      names.add(member.fullName);
     }
   });
 
   return Array.from(names).sort((a, b) => a.localeCompare(b));
 }
 
-async function getReportingStaffMembers(storeIds: string[]) {
+async function getReportingStaffMembers(storeIds: string[], includeAllRoles = false) {
   return prisma.staffMember.findMany({
     where: {
       storeId: {
         in: storeIds
       },
-      role: StaffRole.STYLIST
+      ...(includeAllRoles ? {} : { role: StaffRole.STYLIST })
     },
     select: {
       fullName: true,
@@ -172,6 +179,8 @@ export async function getAnalyticsData(
     const sortDirection = normalizeSortDirection(
       typeof searchParams?.sortDirection === "string" ? searchParams.sortDirection : "desc"
     );
+    const staffView = typeof effectiveSearchParams?.staffView === "string" ? effectiveSearchParams.staffView : "";
+    const includeAllRoles = staffView === "all";
 
     const [appointments, reportingStaffMembers] = await Promise.all([
       prisma.appointment.findMany({
@@ -188,13 +197,14 @@ export async function getAnalyticsData(
         select: reportingAppointmentSelect,
         orderBy: [{ appointmentDate: "desc" }, { timeIn: "desc" }]
       }),
-      getReportingStaffMembers(shell.storeIds)
+      getReportingStaffMembers(shell.storeIds, includeAllRoles)
     ]);
 
     const filteredAppointments = applyAppointmentFilters(appointments as ReportingAppointment[], filters);
     const stylistNames = getAvailableStylistNames(
       reportingStaffMembers,
-      filteredAppointments as ReportingAppointment[]
+      filteredAppointments as ReportingAppointment[],
+      includeAllRoles
     );
 
   const leaderboard = stylistNames
@@ -323,6 +333,7 @@ export async function getAnalyticsData(
       pricePointOptions: shell.store.options
         .filter((option) => option.kind === StoreOptionKind.PRICE_POINT)
         .map((option) => option.label),
+      staffView,
       leaderboardSort: {
         key: sortKey,
         direction: sortDirection
@@ -659,12 +670,14 @@ export async function getAdminViewData(searchParams?: Record<string, string | st
     const storeSortDirection = normalizeSortDirection(
       typeof searchParams?.storeSortDirection === "string" ? searchParams?.storeSortDirection : "asc"
     );
+    const staffView = typeof searchParams?.staffView === "string" ? searchParams.staffView : "";
+    const includeAllRoles = staffView === "all";
     const stores = await prisma.store.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
       include: {
         staffMembers: {
-          where: { role: StaffRole.STYLIST },
+          where: includeAllRoles ? {} : { role: StaffRole.STYLIST },
           orderBy: { fullName: "asc" }
         },
         options: {
@@ -707,7 +720,8 @@ export async function getAdminViewData(searchParams?: Record<string, string | st
       const filteredAppointments = applyAppointmentFilters(appointments as ReportingAppointment[], filters);
       const stylistRows = getAvailableStylistNames(
         store.staffMembers.map((member) => ({ fullName: member.fullName, role: member.role })),
-        filteredAppointments as ReportingAppointment[]
+        filteredAppointments as ReportingAppointment[],
+        includeAllRoles
       )
         .map((name) => stylistMetricsFromAppointments(name, filteredAppointments as ReportingAppointment[], filters))
         .map((row) => ({ ...row, storeLabel: store.name, guestsSeen: row.appointmentsCount }))
@@ -831,6 +845,7 @@ export async function getAdminViewData(searchParams?: Record<string, string | st
             : "0m"
         }
       ],
+      staffView,
       leaderboard,
       totalStoreRows: perStoreMetrics.length,
       leaderboardSort: {

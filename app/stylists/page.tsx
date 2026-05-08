@@ -98,8 +98,9 @@ export default async function StylistsPage({ searchParams }: StylistsPageProps) 
           </div>
           <ReportFiltersForm
             appointmentTypeOptions={stylists.appointmentTypeOptions}
-            filters={stylists.filters}
+            filters={{ ...stylists.filters, staffView: stylists.staffView }}
             pricePointOptions={stylists.pricePointOptions}
+            showEmployeeView={session.role !== "STYLIST"}
             showTwoWeek
           />
         </section>

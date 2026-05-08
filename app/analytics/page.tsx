@@ -94,8 +94,9 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
           </div>
           <ReportFiltersForm
             appointmentTypeOptions={analytics.appointmentTypeOptions}
-            filters={analytics.filters}
+            filters={{ ...analytics.filters, staffView: analytics.staffView }}
             pricePointOptions={analytics.pricePointOptions}
+            showEmployeeView
             showTwoWeek
           />
         </section>
