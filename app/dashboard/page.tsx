@@ -1,3 +1,6 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+
 import { AppShell } from "@/components/app-shell";
 import { CurrentCustomersPanel } from "@/components/current-customers-panel";
 import { DashboardCheckInPanel } from "@/components/dashboard-check-in-panel";
@@ -8,7 +11,7 @@ import {
   quickCheckoutCurrentCustomer,
   updateCurrentCustomerStatus
 } from "@/lib/server/dashboard-actions";
-import { redirect } from "next/navigation";
+import { safeTimezone, getTodayDateString } from "@/lib/tz-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -20,14 +23,16 @@ function formatToday(date: Date) {
   }).format(date);
 }
 
-function formatDateInput(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function formatTimeInput(date: Date) {
-  const hours = `${date.getHours()}`.padStart(2, "0");
-  const minutes = `${date.getMinutes()}`.padStart(2, "0");
-  return `${hours}:${minutes}`;
+function formatTimeInput(date: Date, timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const hour = String(Number(parts.find((p) => p.type === "hour")?.value ?? "0") % 24).padStart(2, "0");
+  const minute = (parts.find((p) => p.type === "minute")?.value ?? "00").padStart(2, "0");
+  return `${hour}:${minute}`;
 }
 
 function formatMinutes(totalMinutes: number) {
@@ -51,7 +56,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   }
 
   void searchParams;
-  const dashboard = await getDashboardData(session.storeSlug);
+  const cookieStore = await cookies();
+  const timezone = safeTimezone(cookieStore.get("tz")?.value);
+  const dashboard = await getDashboardData(session.storeSlug, timezone);
 
   if (!dashboard) {
     return (
@@ -70,8 +77,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const now = new Date();
   const todayLabel = formatToday(now);
-  const todayDate = formatDateInput(now);
-  const defaultTime = formatTimeInput(now);
+  const todayDate = getTodayDateString(timezone);
+  const defaultTime = formatTimeInput(now, timezone);
 
   return (
     <AppShell

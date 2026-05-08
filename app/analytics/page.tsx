@@ -8,7 +8,6 @@ import { formatMinutes, formatPercent } from "@/lib/reporting";
 import { getAnalyticsData } from "@/lib/reporting-data";
 import { buildQuery } from "@/lib/query-utils";
 
-export const dynamic = "force-dynamic";
 
 type AnalyticsPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -108,13 +107,6 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
               <div className={`summary-value ${card.compact ? "summary-value-small" : ""}`}>{card.value}</div>
             </article>
           ))}
-          {analytics.unassignedAppointmentsCount ? (
-            <article className="summary-card">
-              <div className="summary-label">Unassigned</div>
-              <div className="summary-value">{analytics.unassignedAppointmentsCount}</div>
-              <div className="summary-note">Excluded from stylist leaderboard</div>
-            </article>
-          ) : null}
         </div>
 
         <section className="panel full-width-panel">
@@ -182,9 +174,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
                     <td colSpan={8}>
                       <div className="empty-state">
                         {analytics.filteredAppointmentsCount
-                          ? analytics.unassignedAppointmentsCount
-                            ? "This reporting window has appointments, but they are still unassigned and not yet tied to a stylist."
-                            : "This reporting window has appointments, but none are linked to a stylist yet."
+                          ? "This reporting window has appointments, but none are linked to a stylist yet."
                           : "No stylist data for this reporting window."}
                       </div>
                     </td>

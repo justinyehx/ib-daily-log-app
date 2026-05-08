@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { SubmitButton } from "@/components/submit-button";
+import { TimezoneSync } from "@/components/timezone-sync";
 import type { CurrentSession } from "@/lib/auth";
 import { signOutDemo } from "@/lib/server/auth-actions";
 import { switchDemoStore } from "@/lib/server/settings-actions";
@@ -179,6 +180,7 @@ export function AppShell({ activeView, storeName, session, snapshot, stores = []
       </aside>
 
       <main className="content">{children}</main>
+      <TimezoneSync />
     </div>
   );
 }

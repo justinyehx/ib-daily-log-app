@@ -8,7 +8,6 @@ import { formatMinutes, formatPercent } from "@/lib/reporting";
 import { getStylistsData } from "@/lib/reporting-data";
 import { buildQuery } from "@/lib/query-utils";
 
-export const dynamic = "force-dynamic";
 
 type StylistsPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
