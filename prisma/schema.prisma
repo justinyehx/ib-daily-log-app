@@ -18,6 +18,8 @@ enum UserRole {
 enum StaffRole {
   STYLIST
   SEAMSTRESS
+  FRONT_DESK
+  MANAGER
 }
 
 enum VisitType {

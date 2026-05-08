@@ -131,14 +131,18 @@ export async function getDashboardData(storeSlug: string, timezone = "UTC") {
         orderBy: [{ status: "asc" }, { timeIn: "asc" }]
       }),
 
-      // All ACTIVE/WAITING appointments regardless of date — anyone not explicitly
-      // checked out stays visible on the floor panel until the front desk clears them.
-      // Uses the @@index([storeId, deletedAt, status, appointmentDate]) prefix.
+      // ACTIVE/WAITING appointments within a 2-day window. The extra day handles
+      // overnight edge cases (timezone rollover) while preventing months-old
+      // forgotten records from surfacing. Staff can use "Remove from floor" on
+      // any genuinely stale card to clear it without affecting time data.
       prisma.appointment.findMany({
         where: {
           storeId: { in: shell.storeIds },
           deletedAt: null,
-          status: { in: [AppointmentStatus.ACTIVE, AppointmentStatus.WAITING] }
+          status: { in: [AppointmentStatus.ACTIVE, AppointmentStatus.WAITING] },
+          appointmentDate: {
+            gte: new Date(dayStart.getTime() - 24 * 60 * 60 * 1000)
+          }
         },
         select: {
           id: true,

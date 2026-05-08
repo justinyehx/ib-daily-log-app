@@ -99,6 +99,7 @@ type CustomerCheckoutCardProps = {
   sizeOptions: SizeOption[];
   updateStatusAction: (formData: FormData) => void | Promise<void>;
   checkoutAction: (formData: FormData) => void | Promise<void>;
+  dismissAction?: (formData: FormData) => void | Promise<void>;
 };
 
 export function CustomerCheckoutCard({
@@ -109,7 +110,8 @@ export function CustomerCheckoutCard({
   pricePointOptions,
   sizeOptions,
   updateStatusAction,
-  checkoutAction
+  checkoutAction,
+  dismissAction
 }: CustomerCheckoutCardProps) {
   const [purchased, setPurchased] = useState<"" | "Yes" | "No">(purchaseValue(customer.purchased));
   const [cbAppt, setCbAppt] = useState<"No" | "Yes">("No");
@@ -443,6 +445,28 @@ export function CustomerCheckoutCard({
             >
               {optimisticStatus === "WAITING" ? "Mark active" : "Mark waiting"}
             </button>
+            {dismissAction ? (
+              <button
+                className="button ghost customer-action-button"
+                disabled={isPending}
+                onClick={() => {
+                  const formData = new FormData();
+                  formData.set("appointmentId", customer.id);
+                  setIsHidden(true);
+                  startTransition(async () => {
+                    try {
+                      await dismissAction(formData);
+                    } catch (error) {
+                      console.error(error);
+                      setIsHidden(false);
+                    }
+                  });
+                }}
+                type="button"
+              >
+                Dismiss
+              </button>
+            ) : null}
             <SubmitButton className="button customer-action-button" pendingLabel="Checking out...">
               Check Out
             </SubmitButton>

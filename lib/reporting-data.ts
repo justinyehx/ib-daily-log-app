@@ -546,22 +546,33 @@ export async function getSettingsData(storeSlug: string) {
     orderBy: [{ isActive: "desc" }, { role: "asc" }, { fullName: "asc" }]
   });
 
-  const optionGroups = [
+  type OptionGroupItem = { id: string; label: string; roleLabel?: string };
+
+  function staffRoleLabel(role: string): string {
+    switch (role) {
+      case "STYLIST": return "Stylist";
+      case "SEAMSTRESS": return "Seamstress";
+      case "FRONT_DESK": return "Front Desk";
+      case "MANAGER": return "Manager";
+      default: return role;
+    }
+  }
+
+  const optionGroups: Array<{
+    title: string;
+    formKind: string;
+    inputPlaceholder: string;
+    items: OptionGroupItem[];
+  }> = [
     {
-      title: "Stylists",
-      formKind: "staff-stylist",
-      inputPlaceholder: "Add stylist name",
-      items: shell.store.staffMembers
-        .filter((entry) => entry.role === StaffRole.STYLIST)
-        .map((entry) => ({ id: entry.id, label: entry.fullName }))
-    },
-    {
-      title: "Seamstresses",
-      formKind: "staff-seamstress",
-      inputPlaceholder: "Add seamstress name",
-      items: shell.store.staffMembers
-        .filter((entry) => entry.role === StaffRole.SEAMSTRESS)
-        .map((entry) => ({ id: entry.id, label: entry.fullName }))
+      title: "Staff Members",
+      formKind: "staff",
+      inputPlaceholder: "Add staff name",
+      items: shell.store.staffMembers.map((entry) => ({
+        id: entry.id,
+        label: entry.fullName,
+        roleLabel: staffRoleLabel(entry.role)
+      }))
     },
     {
       title: "Locations",

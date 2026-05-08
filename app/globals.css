@@ -1739,19 +1739,29 @@ textarea:disabled {
 }
 
 .inline-add-form {
-  display: grid;
-  grid-template-columns: 1fr auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   align-items: center;
 }
 
 .inline-add-form input {
-  width: 100%;
+  flex: 1 1 160px;
   padding: 12px 14px;
   border-radius: 12px;
   border: 1px solid rgba(76, 50, 33, 0.14);
   background: rgba(255, 255, 255, 0.92);
   min-height: 48px;
+}
+
+.inline-add-form select {
+  flex: 0 0 auto;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(76, 50, 33, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  min-height: 48px;
+  cursor: pointer;
 }
 
 .operation-item {
@@ -1766,6 +1776,62 @@ textarea:disabled {
 }
 
 .operation-item form {
+  flex-shrink: 0;
+}
+
+.settings-role-tag {
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: rgba(76, 50, 33, 0.07);
+  color: var(--text-soft);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.settings-multirole-note {
+  margin-bottom: 4px;
+  font-size: 0.82rem;
+}
+
+.staff-item-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.operation-item-edit {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.staff-edit-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.staff-edit-name {
+  font-weight: 500;
+  min-width: 100px;
+  flex: 1 1 120px;
+}
+
+.staff-edit-select {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(76, 50, 33, 0.18);
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 0.9rem;
+}
+
+.staff-edit-actions {
+  display: flex;
+  gap: 8px;
   flex-shrink: 0;
 }
 

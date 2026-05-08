@@ -3,6 +3,7 @@
 import { StaffRole, StoreOptionKind, UserRole } from "@prisma/client";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { hashPassword } from "@/lib/passwords";
 import { prisma } from "@/lib/prisma";
@@ -74,8 +75,14 @@ export async function addSettingsItem(formData: FormData) {
     throw new Error("Store, list type, and value are required.");
   }
 
-  if (formKind === "staff-stylist" || formKind === "staff-seamstress") {
-    const role = formKind === "staff-seamstress" ? StaffRole.SEAMSTRESS : StaffRole.STYLIST;
+  if (formKind === "staff" || formKind === "staff-stylist" || formKind === "staff-seamstress") {
+    const roleInput = asString(formData.get("role")).toUpperCase();
+    const validRoles: string[] = ["STYLIST", "SEAMSTRESS", "FRONT_DESK", "MANAGER"];
+    const role = validRoles.includes(roleInput)
+      ? (roleInput as StaffRole)
+      : formKind === "staff-seamstress"
+        ? StaffRole.SEAMSTRESS
+        : StaffRole.STYLIST;
     await prisma.staffMember.upsert({
       where: {
         storeId_role_normalizedFullName: {
@@ -167,7 +174,7 @@ export async function removeSettingsItem(formData: FormData) {
     throw new Error("List type and item are required.");
   }
 
-  if (formKind === "staff-stylist" || formKind === "staff-seamstress") {
+  if (formKind === "staff" || formKind === "staff-stylist" || formKind === "staff-seamstress") {
     await prisma.staffMember.update({
       where: { id: itemId },
       data: { isActive: false }
@@ -367,6 +374,26 @@ export async function applyAccessSettings(formData: FormData) {
   revalidatePath("/stylists");
   revalidatePath("/settings");
   revalidatePath("/admin-view");
+}
+
+export async function updateStaffMemberRole(formData: FormData) {
+  const itemId = asString(formData.get("itemId"));
+  const roleInput = asString(formData.get("role")).toUpperCase();
+  const validRoles = ["STYLIST", "SEAMSTRESS", "FRONT_DESK", "MANAGER"];
+
+  if (!itemId || !validRoles.includes(roleInput)) {
+    throw new Error("Staff member and a valid role are required.");
+  }
+
+  await prisma.staffMember.update({
+    where: { id: itemId },
+    data: { role: roleInput as StaffRole }
+  });
+
+  revalidatePath("/settings");
+  revalidatePath("/dashboard");
+  revalidatePath("/daily-log");
+  redirect("/settings?dropdown=staff");
 }
 
 export async function switchDemoStore(formData: FormData) {

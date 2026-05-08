@@ -8,7 +8,7 @@ import { UserAccountForm } from "@/components/user-account-form";
 import { getCurrentSession } from "@/lib/auth";
 import { buildQuery } from "@/lib/query-utils";
 import { getSettingsData } from "@/lib/reporting-data";
-import { addSettingsItem, disableUserAccount, removeSettingsItem, switchDemoStore } from "@/lib/server/settings-actions";
+import { addSettingsItem, disableUserAccount, removeSettingsItem, switchDemoStore, updateStaffMemberRole } from "@/lib/server/settings-actions";
 
 // No force-dynamic needed: getCurrentSession() reads cookies which already
 // makes this route dynamic. Settings data (staff, options, users) is
@@ -35,11 +35,25 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   }
 
   const stylistOptions =
-    settings.optionGroups.find((group) => group.title === "Stylists")?.items.map((item) => item.label) || [];
+    settings.optionGroups.find((group) => group.formKind === "staff")?.items
+      .filter((item) => item.roleLabel === "Stylist")
+      .map((item) => item.label) || [];
   const totalOptionValues = settings.optionGroups.reduce((sum, group) => sum + group.items.length, 0);
   const isAdmin = session.role === "ADMIN";
   const selectedDropdown =
     typeof resolvedSearchParams?.dropdown === "string" ? resolvedSearchParams.dropdown : "";
+  const editingStaffId =
+    typeof resolvedSearchParams?.editStaff === "string" ? resolvedSearchParams.editStaff : "";
+
+  function roleLabelToValue(label: string | undefined): string {
+    switch (label) {
+      case "Stylist": return "STYLIST";
+      case "Seamstress": return "SEAMSTRESS";
+      case "Front Desk": return "FRONT_DESK";
+      case "Manager": return "MANAGER";
+      default: return "STYLIST";
+    }
+  }
   const selectedGroup =
     settings.optionGroups.find((group) => group.formKind === selectedDropdown) || null;
   const accessSummary = isAdmin
@@ -256,6 +270,20 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               <form action={addSettingsItem} className="inline-add-form">
                 <input type="hidden" name="storeId" value={settings.store.id} />
                 <input type="hidden" name="formKind" value={selectedGroup.formKind} />
+                {selectedGroup.formKind === "staff" ? (
+                  <select
+                    className="select"
+                    disabled={settings.isVirtualStore}
+                    name="role"
+                    defaultValue="STYLIST"
+                    required
+                  >
+                    <option value="STYLIST">Stylist</option>
+                    <option value="SEAMSTRESS">Seamstress</option>
+                    <option value="FRONT_DESK">Front Desk</option>
+                    <option value="MANAGER">Manager</option>
+                  </select>
+                ) : null}
                 <input
                   disabled={settings.isVirtualStore}
                   name="value"
@@ -266,24 +294,75 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                   Add
                 </SubmitButton>
               </form>
+              {selectedGroup.formKind === "staff" ? (
+                <p className="settings-copy settings-multirole-note">
+                  To give someone a second role, add their name again with a different type selected above.
+                </p>
+              ) : null}
               <div className="operation-list">
                 {selectedGroup.items.length ? (
-                  selectedGroup.items.map((item) => (
-                    <div className="operation-item" key={item.id}>
-                      <span>{item.label}</span>
-                      <form action={removeSettingsItem}>
-                        <input type="hidden" name="formKind" value={selectedGroup.formKind} />
-                        <input type="hidden" name="itemId" value={item.id} />
-                        <SubmitButton
-                          className="button secondary"
-                          pendingLabel="Updating..."
-                          disabled={settings.isVirtualStore}
-                        >
-                          Inactive
-                        </SubmitButton>
-                      </form>
-                    </div>
-                  ))
+                  selectedGroup.items.map((item) =>
+                    selectedGroup.formKind === "staff" && editingStaffId === item.id ? (
+                      <div className="operation-item operation-item-edit" key={item.id}>
+                        <form action={updateStaffMemberRole} className="staff-edit-form">
+                          <input type="hidden" name="itemId" value={item.id} />
+                          <span className="staff-edit-name">{item.label}</span>
+                          <select
+                            className="select staff-edit-select"
+                            name="role"
+                            defaultValue={roleLabelToValue(item.roleLabel)}
+                            required
+                          >
+                            <option value="STYLIST">Stylist</option>
+                            <option value="SEAMSTRESS">Seamstress</option>
+                            <option value="FRONT_DESK">Front Desk</option>
+                            <option value="MANAGER">Manager</option>
+                          </select>
+                          <div className="staff-edit-actions">
+                            <SubmitButton className="button" pendingLabel="Saving...">
+                              Save
+                            </SubmitButton>
+                            <Link
+                              className="button secondary"
+                              href={buildQuery(resolvedSearchParams, { editStaff: "" })}
+                            >
+                              Cancel
+                            </Link>
+                          </div>
+                        </form>
+                      </div>
+                    ) : (
+                      <div className="operation-item" key={item.id}>
+                        <span>
+                          {item.label}
+                          {item.roleLabel ? (
+                            <small className="settings-role-tag">{item.roleLabel}</small>
+                          ) : null}
+                        </span>
+                        <div className="staff-item-actions">
+                          {selectedGroup.formKind === "staff" && !settings.isVirtualStore ? (
+                            <Link
+                              className="button secondary"
+                              href={buildQuery(resolvedSearchParams, { editStaff: item.id })}
+                            >
+                              Edit role
+                            </Link>
+                          ) : null}
+                          <form action={removeSettingsItem}>
+                            <input type="hidden" name="formKind" value={selectedGroup.formKind} />
+                            <input type="hidden" name="itemId" value={item.id} />
+                            <SubmitButton
+                              className="button secondary"
+                              pendingLabel="Updating..."
+                              disabled={settings.isVirtualStore}
+                            >
+                              Inactive
+                            </SubmitButton>
+                          </form>
+                        </div>
+                      </div>
+                    )
+                  )
                 ) : (
                   <p className="settings-copy">No values loaded yet.</p>
                 )}

@@ -1,0 +1,3 @@
+-- Add FRONT_DESK and MANAGER to StaffRole enum
+ALTER TYPE "StaffRole" ADD VALUE 'FRONT_DESK';
+ALTER TYPE "StaffRole" ADD VALUE 'MANAGER';

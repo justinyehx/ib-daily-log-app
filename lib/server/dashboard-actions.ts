@@ -376,3 +376,28 @@ export async function quickCheckoutCurrentCustomer(formData: FormData) {
   revalidatePath("/dashboard");
   revalidatePath("/daily-log");
 }
+
+/**
+ * Removes a stale customer card from the floor view without modifying any
+ * time data. Sets status to COMPLETE and records when it was dismissed, but
+ * intentionally leaves timeOut untouched so historical records stay accurate.
+ */
+export async function dismissCurrentCustomer(formData: FormData) {
+  const appointmentId = asString(formData.get("appointmentId"));
+
+  if (!appointmentId) {
+    throw new Error("Appointment is required.");
+  }
+
+  await prisma.appointment.update({
+    where: { id: appointmentId },
+    data: {
+      status: AppointmentStatus.COMPLETE,
+      checkedOutAt: new Date()
+      // timeOut intentionally not set — preserves original time data
+    }
+  });
+
+  revalidatePath("/dashboard");
+  revalidatePath("/daily-log");
+}

@@ -8,6 +8,7 @@ import { getCurrentSession } from "@/lib/auth";
 import { getDashboardData } from "@/lib/dashboard-data";
 import {
   createDashboardCheckIn,
+  dismissCurrentCustomer,
   quickCheckoutCurrentCustomer,
   updateCurrentCustomerStatus
 } from "@/lib/server/dashboard-actions";
@@ -154,6 +155,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <CurrentCustomersPanel
           checkoutAction={quickCheckoutCurrentCustomer}
           customers={dashboard.currentCustomers}
+          dismissAction={dismissCurrentCustomer}
           leadSourceOptions={dashboard.quickCheckInOptions.leadSources}
           pricePointOptions={dashboard.quickCheckInOptions.pricePoints}
           reasonOptions={dashboard.quickCheckInOptions.reasonDidNotBuyOptions}
