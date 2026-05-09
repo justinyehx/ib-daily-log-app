@@ -1,6 +1,7 @@
 "use client";
 
 import { formatDateLabel } from "@/lib/appointment-form-utils";
+import { formatStaffDisplayName } from "@/lib/staff-display";
 
 export type CustomerProfile = {
   id: string;
@@ -80,7 +81,7 @@ export function PreviousCustomerLookup({
 
               <div className="pill-row">
                 <span className="pill">{profile.appointmentType || "—"}</span>
-                {profile.assignedTo ? <span className="pill">{profile.assignedTo}</span> : null}
+                {profile.assignedTo ? <span className="pill">{formatStaffDisplayName(profile.assignedTo)}</span> : null}
                 {profile.location ? <span className="pill">{profile.location}</span> : null}
               </div>
 

@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
@@ -6,6 +7,8 @@ import { ReportFiltersForm } from "@/components/report-filters-form";
 import { getCurrentSession } from "@/lib/auth";
 import { getDailyLogData } from "@/lib/daily-log-data";
 import { createDailyLogEntry, deleteDailyLogEntry, updateDailyLogEntry } from "@/lib/server/daily-log-actions";
+import { formatStaffDisplayName } from "@/lib/staff-display";
+import { safeTimezone } from "@/lib/tz-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +25,9 @@ export default async function DailyLogPage({ searchParams }: DailyLogPageProps) 
     redirect("/stylists");
   }
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const dailyLog = await getDailyLogData(session.storeSlug, resolvedSearchParams);
+  const cookieStore = await cookies();
+  const timezone = safeTimezone(cookieStore.get("tz")?.value);
+  const dailyLog = await getDailyLogData(session.storeSlug, resolvedSearchParams, timezone);
   const activeEditId = typeof resolvedSearchParams?.editId === "string" ? resolvedSearchParams.editId : "";
 
   if (!dailyLog) {
@@ -154,7 +159,7 @@ export default async function DailyLogPage({ searchParams }: DailyLogPageProps) 
                       {dailyLog.store.slug === "galleria-curve" ? <td>{row.storeName}</td> : null}
                       <td>{row.date}</td>
                       <td>{row.guestName}</td>
-                      <td>{row.assignedTo}</td>
+                      <td>{formatStaffDisplayName(row.assignedTo)}</td>
                       <td>{row.appointmentType}</td>
                       <td>{row.location}</td>
                       <td>{row.timeIn}</td>

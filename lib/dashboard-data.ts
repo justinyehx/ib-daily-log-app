@@ -6,12 +6,13 @@ import { normalizeKey } from "@/lib/strings";
 import { endOfLocalDay, startOfLocalDay } from "@/lib/tz-utils";
 import { getAllStoreChoices, getStoreViewShell } from "@/lib/store-views";
 
-function formatTime(date: Date | null) {
+function formatTime(date: Date | null, timezone = "UTC") {
   if (!date) return "—";
 
   return new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
-    minute: "2-digit"
+    minute: "2-digit",
+    timeZone: timezone
   }).format(date);
 }
 
@@ -402,8 +403,8 @@ export async function getDashboardData(storeSlug: string, timezone = "UTC") {
           assignedTo: a.assignedStaffMember?.fullName || "—",
           appointmentType: a.appointmentTypeLabel,
           location: a.location?.name || "—",
-          timeIn: formatTime(a.timeIn),
-          timeOut: a.timeOut ? formatTime(a.timeOut) : "In store",
+          timeIn: formatTime(a.timeIn, timezone),
+          timeOut: a.timeOut ? formatTime(a.timeOut, timezone) : "In store",
           purchased: a.purchased === null ? "Pending" : a.purchased ? "Yes" : "No",
           otherSale: a.otherPurchase === null ? "Pending" : a.otherPurchase ? "Yes" : "No",
           comments: a.comments || "—",
@@ -427,7 +428,7 @@ export async function getDashboardData(storeSlug: string, timezone = "UTC") {
         appointmentType: a.appointmentTypeLabel,
         visitType: a.visitType === VisitType.WALK_IN ? "Walk-in" : "Appointment",
         status: a.status,
-        timeIn: formatTime(a.timeIn),
+        timeIn: formatTime(a.timeIn, timezone),
         durationMinutes: durationInMinutes(a.timeIn, a.timeOut),
         duration: formatDuration(a.timeIn, a.timeOut),
         wearDateRaw: a.wearDate ? a.wearDate.toISOString().slice(0, 10) : "",

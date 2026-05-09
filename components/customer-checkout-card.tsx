@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 
 import { LiveDuration } from "@/components/live-duration";
 import { SubmitButton } from "@/components/submit-button";
+import { formatStaffDisplayName } from "@/lib/staff-display";
 import {
   getCurrentTimeValue,
   getOffsetMinutes,
@@ -128,7 +129,7 @@ export function CustomerCheckoutCard({
   const hideSizeField = skipsSizeField(customer.appointmentType);
   const hideReasonDidNotBuy = skipsReasonDidNotBuy(customer.appointmentType);
   const approvalRequired = requiresManagerApproval(customer.appointmentType);
-  const showPurchasedField = !useSeamstressField;
+  const showPurchasedField = !skipsBridalDetailFields(customer.appointmentType);
   const visibleStaffOptions = staffOptions.filter((staffOption) =>
     useSeamstressField ? staffOption.role === "SEAMSTRESS" : staffOption.role !== "SEAMSTRESS"
   );
@@ -164,7 +165,7 @@ export function CustomerCheckoutCard({
         <div className="ccs-row ccs-meta-row">
           <span className="ccs-type">{customer.appointmentType}</span>
           {customer.assignedTo !== "Unassigned" ? (
-            <span className="ccs-staff">{customer.assignedTo}</span>
+            <span className="ccs-staff">{formatStaffDisplayName(customer.assignedTo)}</span>
           ) : null}
         </div>
       </button>
@@ -208,7 +209,7 @@ export function CustomerCheckoutCard({
         <div className="customer-meta-inline">
           {customer.assignedTo !== "Unassigned" ? (
             <div>
-              <strong>{useSeamstressField ? "Seamstress" : "Stylist"}:</strong> {customer.assignedTo}
+              <strong>{useSeamstressField ? "Seamstress" : "Stylist"}:</strong> {formatStaffDisplayName(customer.assignedTo)}
             </div>
           ) : null}
           {customer.location !== "Unassigned" ? (

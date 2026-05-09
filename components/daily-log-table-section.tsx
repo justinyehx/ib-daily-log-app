@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 
+import { formatStaffDisplayName } from "@/lib/staff-display";
+
 import { DailyLogWorkflowPanel } from "@/components/daily-log-workflow-panel";
 import type { CustomerProfile } from "@/components/previous-customer-lookup";
 
@@ -264,7 +266,7 @@ export function DailyLogTableSection({
                           row.guestName
                         )}
                       </td>
-                      <td>{row.assignedTo}</td>
+                      <td>{formatStaffDisplayName(row.assignedTo)}</td>
                       <td>{row.appointmentType}</td>
                       <td>{row.visitType}</td>
                       <td>{row.location}</td>

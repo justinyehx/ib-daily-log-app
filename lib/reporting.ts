@@ -239,12 +239,13 @@ export function formatPercent(value: number) {
   return `${Math.round(value * 100)}%`;
 }
 
-export function formatTime(date: Date | null) {
+export function formatTime(date: Date | null, timezone = "UTC") {
   if (!date) return "—";
 
   return new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
-    minute: "2-digit"
+    minute: "2-digit",
+    timeZone: timezone
   }).format(date);
 }
 

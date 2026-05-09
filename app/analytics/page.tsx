@@ -1,12 +1,15 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
 import { ReportFiltersForm } from "@/components/report-filters-form";
 import { getCurrentSession } from "@/lib/auth";
 import { formatMinutes, formatPercent } from "@/lib/reporting";
+import { formatStaffDisplayName } from "@/lib/staff-display";
 import { getAnalyticsData } from "@/lib/reporting-data";
 import { buildQuery } from "@/lib/query-utils";
+import { safeTimezone } from "@/lib/tz-utils";
 
 
 type AnalyticsPageProps = {
@@ -71,7 +74,9 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
   if (session.role === "USER" || session.role === "STYLIST") {
     redirect(session.role === "STYLIST" ? "/stylists" : "/dashboard");
   }
-  const analytics = await getAnalyticsData(session.storeSlug, resolvedSearchParams);
+  const cookieStore = await cookies();
+  const timezone = safeTimezone(cookieStore.get("tz")?.value);
+  const analytics = await getAnalyticsData(session.storeSlug, resolvedSearchParams, timezone);
 
   if (!analytics) {
     return null;
@@ -160,7 +165,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
                 {analytics.leaderboard.length ? (
                   analytics.leaderboard.map((entry) => (
                     <tr key={entry.name}>
-                      <td>{entry.name}</td>
+                      <td>{formatStaffDisplayName(entry.name)}</td>
                       <td>{entry.guestsSeen}</td>
                       <td>{entry.bridesSeen}</td>
                       <td>{entry.bridesSold}</td>

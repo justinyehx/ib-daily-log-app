@@ -61,12 +61,13 @@ function parseWeekValue(weekValue: string) {
   };
 }
 
-function formatTime(date: Date | null) {
+function formatTime(date: Date | null, timezone = "UTC") {
   if (!date) return "—";
 
   return new Intl.DateTimeFormat("en-US", {
     hour: "numeric",
-    minute: "2-digit"
+    minute: "2-digit",
+    timeZone: timezone
   }).format(date);
 }
 
@@ -285,7 +286,8 @@ function buildPreviousCustomerProfiles(
 
 export async function getDailyLogData(
   storeSlug: string,
-  searchParams?: Record<string, string | string[] | undefined>
+  searchParams?: Record<string, string | string[] | undefined>,
+  timezone = "UTC"
 ) {
   return runTimed(`getDailyLogData:${storeSlug}`, async () => {
     const shell = await getStoreViewShell(storeSlug);
@@ -601,8 +603,8 @@ export async function getDailyLogData(
         assignedTo: appointment.assignedStaffMember?.fullName || "Unassigned",
         appointmentType: appointment.appointmentTypeLabel,
         location: appointment.location?.name || "Unassigned",
-        timeIn: formatTime(appointment.timeIn),
-        timeOut: formatTime(appointment.timeOut),
+        timeIn: formatTime(appointment.timeIn, timezone),
+        timeOut: formatTime(appointment.timeOut, timezone),
         heardAbout: appointment.leadSourceLabel || "—",
         pricePoint: appointment.pricePointLabel || "—",
         purchased: appointment.purchased === null ? "Pending" : appointment.purchased ? "Yes" : "No",
@@ -630,10 +632,10 @@ export async function getDailyLogData(
       visitType: appointment.visitType === "WALK_IN" ? "Walk-in" : "Appointment",
       location: appointment.location?.name || "Unassigned",
       locationId: appointment.location?.id || "",
-      timeInRaw: appointment.timeIn.toTimeString().slice(0, 5),
-      timeIn: formatTime(appointment.timeIn),
-      timeOutRaw: appointment.timeOut ? appointment.timeOut.toTimeString().slice(0, 5) : "",
-      timeOut: formatTime(appointment.timeOut),
+      timeInRaw: new Intl.DateTimeFormat("en-CA", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: timezone }).format(appointment.timeIn),
+      timeIn: formatTime(appointment.timeIn, timezone),
+      timeOutRaw: appointment.timeOut ? new Intl.DateTimeFormat("en-CA", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: timezone }).format(appointment.timeOut) : "",
+      timeOut: formatTime(appointment.timeOut, timezone),
       duration: formatDuration(appointment.timeIn, appointment.timeOut),
       leadSourceOptionId: appointment.leadSourceOptionId || "",
       heardAbout: appointment.leadSourceLabel || "—",

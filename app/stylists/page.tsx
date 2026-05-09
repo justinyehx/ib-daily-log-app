@@ -1,12 +1,15 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
 import { ReportFiltersForm } from "@/components/report-filters-form";
 import { getCurrentSession } from "@/lib/auth";
 import { formatMinutes, formatPercent } from "@/lib/reporting";
+import { formatStaffDisplayName } from "@/lib/staff-display";
 import { getStylistsData } from "@/lib/reporting-data";
 import { buildQuery } from "@/lib/query-utils";
+import { safeTimezone } from "@/lib/tz-utils";
 
 
 type StylistsPageProps = {
@@ -75,7 +78,9 @@ export default async function StylistsPage({ searchParams }: StylistsPageProps) 
     session.role === "STYLIST"
       ? { ...(resolvedSearchParams || {}), stylist: session.fullName }
       : resolvedSearchParams;
-  const stylists = await getStylistsData(session.storeSlug, forcedSearchParams);
+  const cookieStore = await cookies();
+  const timezone = safeTimezone(cookieStore.get("tz")?.value);
+  const stylists = await getStylistsData(session.storeSlug, forcedSearchParams, timezone);
 
   if (!stylists) {
     return null;
@@ -134,7 +139,7 @@ export default async function StylistsPage({ searchParams }: StylistsPageProps) 
                   <div className="score-card-top">
                     <div>
                       <p className="panel-kicker">Stylist</p>
-                      <h3>{entry.name}</h3>
+                      <h3>{formatStaffDisplayName(entry.name)}</h3>
                     </div>
                     <span className="chip">{formatPercent(entry.closeRate)} close</span>
                   </div>
@@ -180,7 +185,7 @@ export default async function StylistsPage({ searchParams }: StylistsPageProps) 
           <div className="panel-head">
             <div>
               <p className="panel-kicker">Stylist Detail</p>
-              <h3>{stylists.selectedStylist ? `${stylists.selectedStylist} performance` : "Select a stylist"}</h3>
+              <h3>{stylists.selectedStylist ? `${formatStaffDisplayName(stylists.selectedStylist)} performance` : "Select a stylist"}</h3>
             </div>
           </div>
 

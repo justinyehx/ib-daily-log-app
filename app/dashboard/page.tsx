@@ -13,6 +13,7 @@ import {
   updateCurrentCustomerStatus
 } from "@/lib/server/dashboard-actions";
 import { safeTimezone, getTodayDateString } from "@/lib/tz-utils";
+import { formatStaffDisplayName } from "@/lib/staff-display";
 
 export const dynamic = "force-dynamic";
 
@@ -238,7 +239,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                     <tr key={entry.id}>
                       {dashboard.store.slug === "galleria-curve" ? <td>{entry.storeName}</td> : null}
                       <td>{entry.guestName}</td>
-                      <td>{entry.assignedTo}</td>
+                      <td>{formatStaffDisplayName(entry.assignedTo)}</td>
                       <td>{entry.appointmentType}</td>
                       <td>{entry.location}</td>
                       <td>{entry.timeIn}</td>

@@ -145,7 +145,8 @@ export async function getStoreShellData(storeSlug: string) {
 
 export async function getAnalyticsData(
   storeSlug: string,
-  searchParams?: Record<string, string | string[] | undefined>
+  searchParams?: Record<string, string | string[] | undefined>,
+  timezone = "UTC"
 ) {
   return runTimed(`getAnalyticsData:${storeSlug}`, async () => {
     const shell = await getStoreShellData(storeSlug);
@@ -413,7 +414,8 @@ function buildBreakdownRows(
 
 export async function getStylistsData(
   storeSlug: string,
-  searchParams?: Record<string, string | string[] | undefined>
+  searchParams?: Record<string, string | string[] | undefined>,
+  timezone = "UTC"
 ) {
   return runTimed(`getStylistsData:${storeSlug}`, async () => {
     const analytics = await getAnalyticsData(storeSlug, searchParams);
@@ -439,8 +441,8 @@ export async function getStylistsData(
     appointmentType: appointment.appointmentTypeLabel,
     visitType: appointment.visitType === "WALK_IN" ? "Walk-in" : "Appointment",
     location: appointment.location?.name || "Unassigned",
-    timeIn: formatTime(appointment.timeIn),
-    timeOut: formatTime(appointment.timeOut),
+    timeIn: formatTime(appointment.timeIn, timezone),
+    timeOut: formatTime(appointment.timeOut, timezone),
     duration: formatDuration(appointment.timeIn, appointment.timeOut),
     purchased: appointment.purchased === null ? "Pending" : appointment.purchased ? "Yes" : "No",
     otherSale: appointment.otherPurchase === null ? "Pending" : appointment.otherPurchase ? "Yes" : "No",
@@ -658,7 +660,7 @@ export async function getSettingsData(storeSlug: string) {
   };
 }
 
-export async function getAdminViewData(searchParams?: Record<string, string | string[] | undefined>) {
+export async function getAdminViewData(searchParams?: Record<string, string | string[] | undefined>, timezone = "UTC") {
   return runTimed("getAdminViewData", async () => {
     const filters = resolveReportingFilters(searchParams);
     const dateRange = getDateRange(filters);

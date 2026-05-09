@@ -1,12 +1,15 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
 import { ReportFiltersForm } from "@/components/report-filters-form";
 import { getCurrentSession } from "@/lib/auth";
 import { formatMinutes, formatPercent } from "@/lib/reporting";
+import { formatStaffDisplayName } from "@/lib/staff-display";
 import { getAdminViewData, getStoreShellData } from "@/lib/reporting-data";
 import { buildQuery } from "@/lib/query-utils";
+import { safeTimezone } from "@/lib/tz-utils";
 
 // No force-dynamic needed: this page reads searchParams (already dynamic)
 // and getCurrentSession() reads cookies (also a dynamic signal).
@@ -25,7 +28,9 @@ export default async function AdminViewPage({ searchParams }: AdminViewPageProps
     redirect("/dashboard");
   }
   const shell = await getStoreShellData(session.storeSlug);
-  const admin = await getAdminViewData(resolvedSearchParams);
+  const cookieStore = await cookies();
+  const timezone = safeTimezone(cookieStore.get("tz")?.value);
+  const admin = await getAdminViewData(resolvedSearchParams, timezone);
 
   if (!shell || !admin) {
     return null;
@@ -191,7 +196,7 @@ export default async function AdminViewPage({ searchParams }: AdminViewPageProps
               <tbody>
                 {admin.leaderboard.map((row) => (
                   <tr key={`${row.storeLabel}-${row.name}`}>
-                    <td>{row.name}</td>
+                    <td>{formatStaffDisplayName(row.name)}</td>
                     <td>{row.storeLabel}</td>
                     <td>{row.guestsSeen}</td>
                     <td>{row.bridesSeen}</td>
