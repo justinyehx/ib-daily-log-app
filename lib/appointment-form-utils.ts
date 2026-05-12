@@ -20,6 +20,7 @@ export function skipsBridalDetailFields(value: string) {
     normalized === "phone order" ||
     normalized === "pay" ||
     normalized === "pickup" ||
+    normalized === "other" ||
     isAlterationLabel(normalized)
   );
 }

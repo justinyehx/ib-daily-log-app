@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
 import { normalizeName } from "@/lib/strings";
+import { skipsBridalDetailFields } from "@/lib/appointment-form-utils";
+import { verifyPassword } from "@/lib/passwords";
 
 function asString(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return "";
@@ -285,12 +287,22 @@ export async function quickCheckoutCurrentCustomer(formData: FormData) {
   const otherPurchase =
     otherPurchaseInput === "Yes" ? true : otherPurchaseInput === "No" ? false : null;
   const isAlteration = appointment.appointmentTypeLabel.toLowerCase().includes("alteration");
+  const skipsPurchased = skipsBridalDetailFields(appointment.appointmentTypeLabel);
   const requiresApproval =
     appointment.appointmentTypeLabel === "New Bride - No Try On" ||
     appointment.appointmentTypeLabel === "Special Occasion - No Try On";
 
-  if (requiresApproval && !["manager123", "admin123"].includes(approvalPassword)) {
-    throw new Error("Manager or admin approval is required for this checkout.");
+  if (requiresApproval) {
+    const approvers = await prisma.user.findMany({
+      where: { role: { in: ["MANAGER", "ADMIN"] }, isActive: true },
+      select: { passwordHash: true }
+    });
+    const approved = approvers.some(
+      (u) => u.passwordHash && verifyPassword(approvalPassword, u.passwordHash)
+    );
+    if (!approved) {
+      throw new Error("Incorrect password. A manager or admin password is required.");
+    }
   }
 
   const reasonDidNotBuyOption = reasonDidNotBuyOptionId
@@ -363,13 +375,13 @@ export async function quickCheckoutCurrentCustomer(formData: FormData) {
       pricePointLabel: pricePointOption?.label || appointment.pricePointLabel,
       sizeOptionId: sizeOption?.id || appointment.sizeOptionId,
       sizeLabel: sizeOption?.label || appointment.sizeLabel,
-      purchased: isAlteration ? true : purchased,
+      purchased: skipsPurchased ? null : purchased,
       otherPurchase,
       comments: comments || null,
-      reasonDidNotBuyOptionId: !isAlteration && purchased === false ? reasonDidNotBuyOption?.id || null : null,
-      reasonDidNotBuyLabel: !isAlteration && purchased === false ? reasonDidNotBuyOption?.label || null : null,
-      cbAppointmentScheduled: !isAlteration && purchased === false ? cbAppointmentScheduledInput === "Yes" : false,
-      cbAppointmentAt: !isAlteration && purchased === false && cbAppointmentScheduledInput === "Yes" ? cbAppointmentAt : null
+      reasonDidNotBuyOptionId: !skipsPurchased && purchased === false ? reasonDidNotBuyOption?.id || null : null,
+      reasonDidNotBuyLabel: !skipsPurchased && purchased === false ? reasonDidNotBuyOption?.label || null : null,
+      cbAppointmentScheduled: !skipsPurchased && purchased === false ? cbAppointmentScheduledInput === "Yes" : false,
+      cbAppointmentAt: !skipsPurchased && purchased === false && cbAppointmentScheduledInput === "Yes" ? cbAppointmentAt : null
     }
   });
 

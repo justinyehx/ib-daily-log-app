@@ -15,11 +15,10 @@ export default async function LoginPage() {
     <main className="login-wrap">
       <section className="panel login-card">
         <div>
-          <div className="eyebrow">Access</div>
-          <h1 className="panel-title">Sign in to Impression Bridal Daily Log</h1>
+          <div className="eyebrow">Sign in</div>
+          <h1 className="panel-title">Impression Bridal Daily Log</h1>
           <p className="panel-copy">
-            Use the account your admin or manager created for you. Beta role access is still
-            available as a backup while we finish rollout.
+            Use the email and password your admin or manager created for you.
           </p>
         </div>
 

@@ -240,12 +240,6 @@ export function CustomerCheckoutCard({
           className="customer-checkout-form field-span-3"
           onSubmit={(event) => {
             const form = event.currentTarget;
-            if (approvalRequired && !["manager123", "admin123"].includes(approvalPassword.trim())) {
-              event.preventDefault();
-              setApprovalError("Manager or admin password required for no-try-on checkout.");
-              return;
-            }
-
             setApprovalError("");
             const formData = new FormData(form);
             event.preventDefault();
@@ -254,8 +248,12 @@ export function CustomerCheckoutCard({
               try {
                 await checkoutAction(formData);
               } catch (error) {
-                console.error(error);
                 setIsHidden(false);
+                if (approvalRequired && error instanceof Error) {
+                  setApprovalError(error.message);
+                } else {
+                  console.error(error);
+                }
               }
             });
           }}
@@ -296,7 +294,7 @@ export function CustomerCheckoutCard({
               </select>
             </label>
           ) : (
-            <input type="hidden" name="purchased" value="Yes" />
+            <input type="hidden" name="purchased" value="" />
           )}
 
           <label className="field">
@@ -435,12 +433,7 @@ export function CustomerCheckoutCard({
                 value={approvalPassword}
                 onChange={(event) => {
                   setApprovalPassword(event.target.value);
-                  if (
-                    approvalError &&
-                    ["manager123", "admin123"].includes(event.target.value.trim())
-                  ) {
-                    setApprovalError("");
-                  }
+                  if (approvalError) setApprovalError("");
                 }}
               />
               {approvalError ? <span className="field-error">{approvalError}</span> : null}

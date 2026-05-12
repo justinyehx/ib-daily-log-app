@@ -412,4 +412,5 @@ export async function switchDemoStore(formData: FormData) {
   revalidatePath("/stylists");
   revalidatePath("/settings");
   revalidatePath("/admin-view");
+  redirect("/dashboard");
 }
