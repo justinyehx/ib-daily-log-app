@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { runTimed } from "@/lib/server-performance";
 import { normalizeKey } from "@/lib/strings";
 import { getAllStoreChoices, getStoreViewShell } from "@/lib/store-views";
+import { skipsBridalDetailFields } from "@/lib/appointment-form-utils";
 
 export type DailyLogView = "day" | "week" | "month" | "year";
 
@@ -607,9 +608,9 @@ export async function getDailyLogData(
         timeOut: formatTime(appointment.timeOut, timezone),
         heardAbout: appointment.leadSourceLabel || "—",
         pricePoint: appointment.pricePointLabel || "—",
-        purchased: appointment.purchased === null ? "Pending" : appointment.purchased ? "Yes" : "No",
+        purchased: skipsBridalDetailFields(appointment.appointmentTypeLabel) ? "—" : appointment.purchased === null ? "Pending" : appointment.purchased ? "Yes" : "No",
         otherSale:
-          appointment.otherPurchase === null ? "Pending" : appointment.otherPurchase ? "Yes" : "No",
+          appointment.otherPurchase === null ? "—" : appointment.otherPurchase ? "Yes" : "No",
         comments: appointment.comments || "—",
         status:
           appointment.status === AppointmentStatus.COMPLETE
@@ -644,9 +645,9 @@ export async function getDailyLogData(
       sizeOptionId: appointment.sizeOptionId || "",
       size: appointment.sizeLabel || "—",
       wearDateRaw: appointment.wearDate ? appointment.wearDate.toISOString().slice(0, 10) : "",
-      purchased: appointment.purchased === null ? "Pending" : appointment.purchased ? "Yes" : "No",
+      purchased: skipsBridalDetailFields(appointment.appointmentTypeLabel) ? "—" : appointment.purchased === null ? "Pending" : appointment.purchased ? "Yes" : "No",
       otherSale:
-        appointment.otherPurchase === null ? "Pending" : appointment.otherPurchase ? "Yes" : "No",
+        appointment.otherPurchase === null ? "—" : appointment.otherPurchase ? "Yes" : "No",
       statusRaw: appointment.status,
       status:
         appointment.status === AppointmentStatus.COMPLETE

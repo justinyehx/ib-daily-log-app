@@ -5,6 +5,7 @@ import { runTimed } from "@/lib/server-performance";
 import { normalizeKey } from "@/lib/strings";
 import { endOfLocalDay, startOfLocalDay } from "@/lib/tz-utils";
 import { getAllStoreChoices, getStoreViewShell } from "@/lib/store-views";
+import { skipsBridalDetailFields } from "@/lib/appointment-form-utils";
 
 function formatTime(date: Date | null, timezone = "UTC") {
   if (!date) return "—";
@@ -405,8 +406,8 @@ export async function getDashboardData(storeSlug: string, timezone = "UTC") {
           location: a.location?.name || "—",
           timeIn: formatTime(a.timeIn, timezone),
           timeOut: a.timeOut ? formatTime(a.timeOut, timezone) : "In store",
-          purchased: a.purchased === null ? "Pending" : a.purchased ? "Yes" : "No",
-          otherSale: a.otherPurchase === null ? "Pending" : a.otherPurchase ? "Yes" : "No",
+          purchased: skipsBridalDetailFields(a.appointmentTypeLabel) ? "—" : a.purchased === null ? "Pending" : a.purchased ? "Yes" : "No",
+          otherSale: a.otherPurchase === null ? "—" : a.otherPurchase ? "Yes" : "No",
           comments: a.comments || "—",
           status:
             a.status === AppointmentStatus.COMPLETE
