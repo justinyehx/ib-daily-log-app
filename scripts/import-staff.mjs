@@ -35,6 +35,7 @@ const ROLE_MAP = {
   "seamstress": "SEAMSTRESS",
   "front desk": "FRONT_DESK",
   "manager":    "MANAGER",
+  "runner":     "RUNNER",
 };
 
 async function main() {

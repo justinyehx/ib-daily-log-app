@@ -20,6 +20,7 @@ enum StaffRole {
   SEAMSTRESS
   FRONT_DESK
   MANAGER
+  RUNNER
 }
 
 enum VisitType {

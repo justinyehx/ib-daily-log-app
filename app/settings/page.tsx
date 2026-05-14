@@ -51,6 +51,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       case "Seamstress": return "SEAMSTRESS";
       case "Front Desk": return "FRONT_DESK";
       case "Manager": return "MANAGER";
+      case "Runner": return "RUNNER";
       default: return "STYLIST";
     }
   }
@@ -282,6 +283,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                     <option value="SEAMSTRESS">Seamstress</option>
                     <option value="FRONT_DESK">Front Desk</option>
                     <option value="MANAGER">Manager</option>
+                    <option value="RUNNER">Runner</option>
                   </select>
                 ) : null}
                 <input

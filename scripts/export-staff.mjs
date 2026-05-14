@@ -30,6 +30,7 @@ const ROLE_LABELS = {
   SEAMSTRESS: "Seamstress",
   FRONT_DESK: "Front Desk",
   MANAGER: "Manager",
+  RUNNER: "Runner",
 };
 
 async function main() {
