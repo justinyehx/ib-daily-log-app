@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import { LiveDuration } from "@/components/live-duration";
 import { SubmitButton } from "@/components/submit-button";
@@ -118,6 +118,23 @@ export function CustomerCheckoutCard({
   const [purchased, setPurchased] = useState<"" | "Yes" | "No">(purchaseValue(customer.purchased));
   const [cbAppt, setCbAppt] = useState<"No" | "Yes">("No");
   const [timeOutValue, setTimeOutValue] = useState(getCurrentTimeValue());
+  const timeUserEdited = useRef(false);
+
+  useEffect(() => {
+    const tick = () => {
+      if (!timeUserEdited.current) {
+        setTimeOutValue(getCurrentTimeValue());
+      }
+    };
+    // Align to the next whole minute, then tick every 60s
+    const msUntilNextMinute = 60000 - (Date.now() % 60000);
+    const initial = setTimeout(() => {
+      tick();
+      const interval = setInterval(tick, 60000);
+      return () => clearInterval(interval);
+    }, msUntilNextMinute);
+    return () => clearTimeout(initial);
+  }, []);
   const [optimisticStatus, setOptimisticStatus] = useState(customer.status);
   const [isHidden, setIsHidden] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -274,7 +291,7 @@ export function CustomerCheckoutCard({
               name="timeOut"
               type="time"
               value={timeOutValue}
-              onChange={(event) => setTimeOutValue(event.target.value)}
+              onChange={(event) => { timeUserEdited.current = true; setTimeOutValue(event.target.value); }}
               required
             />
           </label>

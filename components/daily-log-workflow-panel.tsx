@@ -9,7 +9,8 @@ import {
   formatDateLabel,
   getCurrentTimeValue,
   getOffsetMinutes,
-  isAlterationLabel
+  isAlterationLabel,
+  skipsPurchasedField
 } from "@/lib/appointment-form-utils";
 
 type Option = {
@@ -55,6 +56,8 @@ type DailyLogEditableRow = {
   pricePointOptionId: string;
   sizeOptionId: string;
   wearDateRaw: string;
+  purchasedRaw: string;
+  otherPurchaseRaw: string;
   statusRaw: string;
   commentsRaw: string;
 };
@@ -96,6 +99,8 @@ type FormState = {
   leadSourceOptionId: string;
   pricePointOptionId: string;
   sizeOptionId: string;
+  purchased: "" | "Yes" | "No";
+  otherPurchase: "" | "Yes" | "No";
   comments: string;
   status: "ACTIVE" | "WAITING" | "COMPLETE";
 };
@@ -115,6 +120,8 @@ function emptyState(todayDate: string, defaultTime: string): FormState {
     leadSourceOptionId: "",
     pricePointOptionId: "",
     sizeOptionId: "",
+    purchased: "",
+    otherPurchase: "",
     comments: "",
     status: "ACTIVE"
   };
@@ -135,6 +142,8 @@ function fromRow(row: DailyLogEditableRow): FormState {
     leadSourceOptionId: row.leadSourceOptionId,
     pricePointOptionId: row.pricePointOptionId,
     sizeOptionId: row.sizeOptionId,
+    purchased: row.purchasedRaw === "Yes" ? "Yes" : row.purchasedRaw === "No" ? "No" : "",
+    otherPurchase: row.otherPurchaseRaw === "Yes" ? "Yes" : row.otherPurchaseRaw === "No" ? "No" : "",
     comments: row.commentsRaw,
     status:
       row.statusRaw === "WAITING" ? "WAITING" : row.statusRaw === "COMPLETE" ? "COMPLETE" : "ACTIVE"
@@ -308,6 +317,8 @@ export function DailyLogWorkflowPanel({
       pricePointOptionId:
         (matchingStoreConfig?.pricePoints || activePricePoints).find((pricePoint) => pricePoint.label === profile.pricePoint)?.id || "",
       sizeOptionId: (matchingStoreConfig?.sizes || activeSizes).find((size) => size.label === profile.size)?.id || "",
+      purchased: "",
+      otherPurchase: "",
       comments: profile.comments || "",
       status: "ACTIVE"
     });
@@ -599,6 +610,40 @@ export function DailyLogWorkflowPanel({
               <option value="ACTIVE">Active</option>
               <option value="WAITING">Waiting</option>
               <option value="COMPLETE">Complete</option>
+            </select>
+          </label>
+
+          {!skipsPurchasedField(
+            activeAppointmentTypes.find((t) => t.id === formState.appointmentTypeOptionId)?.label ?? ""
+          ) ? (
+            <label className="field">
+              <span className="field-label">Purchased</span>
+              <select
+                className="select"
+                name="purchased"
+                onChange={(event) => patch("purchased", event.target.value as FormState["purchased"])}
+                value={formState.purchased}
+              >
+                <option value="">Select</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
+            </label>
+          ) : (
+            <input type="hidden" name="purchased" value="" />
+          )}
+
+          <label className="field">
+            <span className="field-label">Other sale</span>
+            <select
+              className="select"
+              name="otherPurchase"
+              onChange={(event) => patch("otherPurchase", event.target.value as FormState["otherPurchase"])}
+              value={formState.otherPurchase}
+            >
+              <option value="">Select</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
             </select>
           </label>
 

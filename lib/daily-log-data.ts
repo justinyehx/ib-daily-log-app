@@ -649,8 +649,10 @@ export async function getDailyLogData(
       size: appointment.sizeLabel || "—",
       wearDateRaw: appointment.wearDate ? appointment.wearDate.toISOString().slice(0, 10) : "",
       purchased: skipsPurchasedField(appointment.appointmentTypeLabel) ? "—" : appointment.purchased === null ? "Pending" : appointment.purchased ? "Yes" : "No",
+      purchasedRaw: appointment.purchased === true ? "Yes" : appointment.purchased === false ? "No" : "",
       otherSale:
         appointment.otherPurchase === null ? "—" : appointment.otherPurchase ? "Yes" : "No",
+      otherPurchaseRaw: appointment.otherPurchase === true ? "Yes" : appointment.otherPurchase === false ? "No" : "",
       statusRaw: appointment.status,
       status:
         appointment.status === AppointmentStatus.COMPLETE

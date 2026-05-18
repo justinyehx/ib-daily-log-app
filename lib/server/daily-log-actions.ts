@@ -275,6 +275,8 @@ export async function updateDailyLogEntry(formData: FormData) {
   const wearDateInput = asString(formData.get("wearDate"));
   const visitTypeInput = asString(formData.get("visitType"));
   const statusInput = asString(formData.get("status"));
+  const purchasedInput = asString(formData.get("purchased"));
+  const otherPurchaseInput = asString(formData.get("otherPurchase"));
 
   if (!appointmentId || !guestName || !appointmentTypeOptionId || !appointmentDateInput || !timeInInput) {
     throw new Error("Appointment, guest name, appointment type, date, and time in are required.");
@@ -370,6 +372,8 @@ export async function updateDailyLogEntry(formData: FormData) {
       sizeOptionId: sizeOption?.id || null,
       sizeLabel: sizeOption?.label || null,
       status: resolvedStatus,
+      purchased: purchasedInput === "Yes" ? true : purchasedInput === "No" ? false : null,
+      otherPurchase: otherPurchaseInput === "Yes" ? true : otherPurchaseInput === "No" ? false : null,
       comments: comments || null,
       checkedOutAt: resolvedStatus === AppointmentStatus.COMPLETE ? timeOut || timeIn : null
     }

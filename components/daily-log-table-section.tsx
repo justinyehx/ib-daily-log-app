@@ -56,7 +56,9 @@ export type DailyLogRow = {
   pricePoint: string;
   size: string;
   purchased: string;
+  purchasedRaw: string;
   otherSale: string;
+  otherPurchaseRaw: string;
   status: string;
   comments: string;
   incompleteFields: string[];
@@ -144,6 +146,8 @@ export function DailyLogTableSection({
     pricePointOptionId: row.pricePointOptionId,
     sizeOptionId: row.sizeOptionId,
     wearDateRaw: row.wearDateRaw,
+    purchasedRaw: row.purchasedRaw,
+    otherPurchaseRaw: row.otherPurchaseRaw,
     statusRaw: row.statusRaw,
     commentsRaw: row.commentsRaw
   }));
