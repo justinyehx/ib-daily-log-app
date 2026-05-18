@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 
 import { prisma } from "@/lib/prisma";
 import { normalizeName } from "@/lib/strings";
-import { skipsBridalDetailFields } from "@/lib/appointment-form-utils";
+import { skipsPurchasedField } from "@/lib/appointment-form-utils";
 import { verifyPassword } from "@/lib/passwords";
 
 function asString(value: FormDataEntryValue | null) {
@@ -136,10 +136,10 @@ export async function createDashboardCheckIn(formData: FormData) {
   const normalizedGuestName = normalizeName(guestName);
   const today = new Date();
   const baseDate = appointmentDateInput || today.toISOString().slice(0, 10);
-  const appointmentDate = new Date(`${baseDate}T00:00:00`);
+  const appointmentDate = new Date(`${baseDate}T00:00:00.000Z`);
   const timeIn = buildClientDateTime(baseDate, timeInInput, timeInOffsetMinutes) ?? today;
   const timeOut = buildClientDateTime(baseDate, timeOutInput, timeOutOffsetMinutes);
-  const wearDate = wearDateInput ? new Date(`${wearDateInput}T00:00:00`) : null;
+  const wearDate = wearDateInput ? new Date(`${wearDateInput}T00:00:00.000Z`) : null;
 
   const existingCustomer =
     await prisma.customer.findFirst({
@@ -287,7 +287,7 @@ export async function quickCheckoutCurrentCustomer(formData: FormData) {
   const otherPurchase =
     otherPurchaseInput === "Yes" ? true : otherPurchaseInput === "No" ? false : null;
   const isAlteration = appointment.appointmentTypeLabel.toLowerCase().includes("alteration");
-  const skipsPurchased = skipsBridalDetailFields(appointment.appointmentTypeLabel);
+  const skipsPurchased = skipsPurchasedField(appointment.appointmentTypeLabel);
   const requiresApproval =
     appointment.appointmentTypeLabel === "New Bride - No Try On" ||
     appointment.appointmentTypeLabel === "Special Occasion - No Try On";

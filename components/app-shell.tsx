@@ -12,7 +12,7 @@ import { switchDemoStore } from "@/lib/server/settings-actions";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type AppShellProps = {
-  activeView: "dashboard" | "daily-log" | "analytics" | "stylists" | "settings" | "admin-view";
+  activeView: "dashboard" | "daily-log" | "analytics" | "stylists" | "timeline" | "settings" | "admin-view";
   storeName: string;
   session: CurrentSession;
   snapshot: {
@@ -35,6 +35,7 @@ const navItems: Array<{
   { key: "dashboard", label: "Dashboard", href: "/dashboard" },
   { key: "daily-log", label: "Daily Log", href: "/daily-log" },
   { key: "analytics", label: "Analytics", href: "/analytics" },
+  { key: "timeline", label: "Timeline", href: "/analytics/timeline" },
   { key: "stylists", label: "Stylists", href: "/stylists" },
   { key: "admin-view", label: "Admin View", href: "/admin-view" }
 ];

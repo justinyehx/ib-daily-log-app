@@ -10,6 +10,7 @@ import {
   getOffsetMinutes,
   isAlterationLabel,
   skipsBridalDetailFields,
+  skipsPurchasedField,
   skipsReasonDidNotBuy,
   skipsSizeField
 } from "@/lib/appointment-form-utils";
@@ -129,7 +130,7 @@ export function CustomerCheckoutCard({
   const hideSizeField = skipsSizeField(customer.appointmentType);
   const hideReasonDidNotBuy = skipsReasonDidNotBuy(customer.appointmentType);
   const approvalRequired = requiresManagerApproval(customer.appointmentType);
-  const showPurchasedField = !skipsBridalDetailFields(customer.appointmentType);
+  const showPurchasedField = !skipsPurchasedField(customer.appointmentType);
   const visibleStaffOptions = staffOptions.filter((staffOption) =>
     useSeamstressField ? staffOption.role === "SEAMSTRESS" : staffOption.role !== "SEAMSTRESS"
   );

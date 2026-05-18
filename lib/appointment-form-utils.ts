@@ -8,7 +8,7 @@ export function isAlterationLabel(value: string) {
   return value.toLowerCase().includes("alteration");
 }
 
-/** Returns true when the appointment type should not collect bridal detail fields. */
+/** Returns true when the appointment type should not collect bridal detail fields (price, size). */
 export function skipsBridalDetailFields(value: string) {
   const normalized = value.trim().toLowerCase();
   if (!normalized) return false;
@@ -17,6 +17,24 @@ export function skipsBridalDetailFields(value: string) {
     normalized === "presentation" ||
     normalized === "comeback bride" ||
     normalized === "comeback bride - same day" ||
+    normalized === "phone order" ||
+    normalized === "pay" ||
+    normalized === "pickup" ||
+    normalized === "other" ||
+    isAlterationLabel(normalized)
+  );
+}
+
+/**
+ * Returns true when checkout should NOT ask whether a gown was purchased.
+ * Comeback Bride is intentionally excluded — they can (and often do) buy a gown.
+ */
+export function skipsPurchasedField(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return false;
+
+  return (
+    normalized === "presentation" ||
     normalized === "phone order" ||
     normalized === "pay" ||
     normalized === "pickup" ||

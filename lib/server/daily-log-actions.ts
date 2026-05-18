@@ -3,12 +3,29 @@
 import { AppointmentStatus, StoreOptionKind, VisitType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
+import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { normalizeName } from "@/lib/strings";
 
 function asString(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return "";
   return value.trim();
+}
+
+/** Resolves the DB store ID for the current session's store slug. Throws if not found. */
+async function requireSessionStore() {
+  const session = await getCurrentSession();
+  if (!session.isAuthenticated) {
+    throw new Error("Authentication required.");
+  }
+  const store = await prisma.store.findUnique({
+    where: { slug: session.storeSlug },
+    select: { id: true }
+  });
+  if (!store) {
+    throw new Error("Store not found.");
+  }
+  return { session, storeId: store.id };
 }
 
 function buildClientDateTime(baseDate: string, timeValue: string, offsetMinutesInput: string) {
@@ -125,6 +142,9 @@ async function resolveAppointmentRelations({
 }
 
 export async function createDailyLogEntry(formData: FormData) {
+  // Auth: verify the session and that the submitted storeId belongs to the session's store.
+  const { storeId: sessionStoreId } = await requireSessionStore();
+
   const storeId = asString(formData.get("storeId"));
   const guestName = asString(formData.get("guestName"));
   const visitTypeInput = asString(formData.get("visitType"));
@@ -147,6 +167,11 @@ export async function createDailyLogEntry(formData: FormData) {
     throw new Error("Store, guest name, appointment type, date, and time in are required.");
   }
 
+  // Verify the submitted store matches the session store (prevents cross-store writes).
+  if (storeId !== sessionStoreId) {
+    throw new Error("Not authorized to add entries for this store.");
+  }
+
   const {
     appointmentTypeOption,
     assignedStaffMember,
@@ -165,31 +190,27 @@ export async function createDailyLogEntry(formData: FormData) {
   });
 
   const normalizedGuestName = normalizeName(guestName);
-  const appointmentDate = new Date(`${appointmentDateInput}T00:00:00`);
+  // Use explicit UTC midnight so the stored date is never off-by-one regardless of server TZ.
+  const appointmentDate = new Date(`${appointmentDateInput}T00:00:00.000Z`);
   const timeIn = buildClientDateTime(appointmentDateInput, timeInInput, timeInOffsetMinutes);
   const timeOut = buildClientDateTime(appointmentDateInput, timeOutInput, timeOutOffsetMinutes);
-  const wearDate = wearDateInput ? new Date(`${wearDateInput}T00:00:00`) : null;
+  const wearDate = wearDateInput ? new Date(`${wearDateInput}T00:00:00.000Z`) : null;
 
   if (!timeIn) {
     throw new Error("Time in is required.");
   }
 
+  // Find or create the customer record for this store.
+  // findFirst + create is intentionally sequential (not parallel) to reduce
+  // the window for duplicate creation under concurrent check-ins.
+  const existingCustomer = await prisma.customer.findFirst({
+    where: { storeId, normalizedFullName: normalizedGuestName },
+    orderBy: { updatedAt: "desc" }
+  });
   const customer =
-    (await prisma.customer.findFirst({
-      where: {
-        storeId,
-        normalizedFullName: normalizedGuestName
-      },
-      orderBy: {
-        updatedAt: "desc"
-      }
-    })) ||
+    existingCustomer ||
     (await prisma.customer.create({
-      data: {
-        storeId,
-        fullName: guestName,
-        normalizedFullName: normalizedGuestName
-      }
+      data: { storeId, fullName: guestName, normalizedFullName: normalizedGuestName }
     }));
 
   const visitType =
@@ -234,6 +255,9 @@ export async function createDailyLogEntry(formData: FormData) {
 }
 
 export async function updateDailyLogEntry(formData: FormData) {
+  // Auth: require authenticated session with store ownership verified after appointment lookup.
+  const { storeId: sessionStoreId } = await requireSessionStore();
+
   const appointmentId = asString(formData.get("appointmentId"));
   const guestName = asString(formData.get("guestName"));
   const appointmentTypeOptionId = asString(formData.get("appointmentTypeOptionId"));
@@ -268,6 +292,11 @@ export async function updateDailyLogEntry(formData: FormData) {
     throw new Error("Removed appointments cannot be edited.");
   }
 
+  // Verify the appointment belongs to the session's store.
+  if (existingAppointment.storeId !== sessionStoreId) {
+    throw new Error("Not authorized to edit this appointment.");
+  }
+
   const {
     appointmentTypeOption,
     assignedStaffMember,
@@ -286,25 +315,21 @@ export async function updateDailyLogEntry(formData: FormData) {
   });
 
   const normalizedGuestName = normalizeName(guestName);
-  const appointmentDate = new Date(`${appointmentDateInput}T00:00:00`);
+  const appointmentDate = new Date(`${appointmentDateInput}T00:00:00.000Z`);
   const timeIn = buildClientDateTime(appointmentDateInput, timeInInput, timeInOffsetMinutes);
   const timeOut = buildClientDateTime(appointmentDateInput, timeOutInput, timeOutOffsetMinutes);
-  const wearDate = wearDateInput ? new Date(`${wearDateInput}T00:00:00`) : null;
+  const wearDate = wearDateInput ? new Date(`${wearDateInput}T00:00:00.000Z`) : null;
 
   if (!timeIn) {
     throw new Error("Time in is required.");
   }
 
+  const existingCustomer = await prisma.customer.findFirst({
+    where: { storeId: existingAppointment.storeId, normalizedFullName: normalizedGuestName },
+    orderBy: { updatedAt: "desc" }
+  });
   const customer =
-    (await prisma.customer.findFirst({
-      where: {
-        storeId: existingAppointment.storeId,
-        normalizedFullName: normalizedGuestName
-      },
-      orderBy: {
-        updatedAt: "desc"
-      }
-    })) ||
+    existingCustomer ||
     (await prisma.customer.create({
       data: {
         storeId: existingAppointment.storeId,
@@ -355,10 +380,31 @@ export async function updateDailyLogEntry(formData: FormData) {
 }
 
 export async function deleteDailyLogEntry(formData: FormData) {
+  // Auth: require authenticated session and verify store ownership.
+  const { storeId: sessionStoreId } = await requireSessionStore();
+
   const appointmentId = asString(formData.get("appointmentId"));
 
   if (!appointmentId) {
     throw new Error("Appointment is required.");
+  }
+
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: appointmentId },
+    select: { storeId: true, deletedAt: true }
+  });
+
+  if (!appointment) {
+    throw new Error("Appointment could not be found.");
+  }
+
+  if (appointment.storeId !== sessionStoreId) {
+    throw new Error("Not authorized to remove this appointment.");
+  }
+
+  if (appointment.deletedAt) {
+    // Already removed — treat as a no-op rather than an error.
+    return;
   }
 
   await prisma.appointment.update({

@@ -284,15 +284,22 @@ export function DailyLogWorkflowPanel({
     if (profile.storeId) {
       setSelectedStoreId(profile.storeId);
     }
+
+    const isWalkIn = profile.visitType === "Walk-in";
+
     setTimeTouched(false);
     setFormState({
       appointmentId: "",
       guestName: profile.guestName,
-      visitType: profile.visitType === "Walk-in" ? "WALK_IN" : "APPOINTMENT",
+      visitType: isWalkIn ? "WALK_IN" : "APPOINTMENT",
+      // Leave blank — the front desk must choose the type for this visit.
+      // A returning customer could be here for anything: alteration, presentation,
+      // pickup, a new appointment, etc. The required field validation will catch
+      // an accidental submit without selecting.
       appointmentTypeOptionId: "",
       assignedStaffMemberId:
         (matchingStoreConfig?.staffMembers || activeStaffMembers).find((staffMember) => staffMember.fullName === profile.assignedTo)?.id || "",
-      locationId: (matchingStoreConfig?.locations || activeLocations).find((location) => location.name === profile.location)?.id || "",
+      locationId: "", // Location is not carried over — it changes each visit
       appointmentDate: todayDate,
       timeIn: getCurrentTimeValue(),
       timeOut: "",

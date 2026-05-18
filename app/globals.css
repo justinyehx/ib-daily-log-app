@@ -2760,3 +2760,589 @@ textarea:disabled {
     grid-column: span 1;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   STYLIST TIMELINE
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Root & controls ─────────────────────────────────────────────── */
+
+.tl-root {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.tl-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.tl-view-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.tl-toggle-btn {
+  padding: 6px 18px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-soft);
+  transition: background 0.12s, color 0.12s;
+  font-family: var(--font-sans);
+}
+
+.tl-toggle-btn:hover {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.tl-toggle-btn.active {
+  background: var(--accent);
+  color: white;
+}
+
+.tl-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+}
+
+.tl-nav-btn {
+  padding: 5px 12px;
+  flex-shrink: 0;
+}
+
+.tl-date-label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  min-width: 0;
+  text-align: center;
+}
+
+.tl-date-picker {
+  flex-shrink: 0;
+}
+
+.tl-date-input {
+  font-size: 0.8125rem;
+  padding: 6px 10px;
+}
+
+/* ── Gantt wrapper ───────────────────────────────────────────────── */
+
+.tl-gantt-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-strong);
+}
+
+/* ── Rows ────────────────────────────────────────────────────────── */
+
+.tl-header-row,
+.tl-row {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--border);
+}
+
+.tl-header-row {
+  background: var(--surface-muted);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.tl-row:last-of-type {
+  border-bottom: none;
+}
+
+/* ── Name column ─────────────────────────────────────────────────── */
+
+.tl-name-col {
+  flex: 0 0 180px;
+  width: 180px;
+  min-width: 180px;
+  padding: 10px 14px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  background: var(--surface-strong);
+}
+
+.tl-name-col-header {
+  background: var(--surface-muted);
+}
+
+.tl-stylist-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.tl-stylist-meta {
+  font-size: 0.6875rem;
+  color: var(--text-soft);
+  line-height: 1.3;
+}
+
+/* ── Track ───────────────────────────────────────────────────────── */
+
+.tl-track {
+  flex: 1 1 0%;
+  min-width: 0;
+  position: relative;
+  height: 56px;
+}
+
+.tl-track-header {
+  height: 32px;
+  background: var(--surface-muted);
+}
+
+/* ── Hour marks & grid lines ─────────────────────────────────────── */
+
+.tl-hour-mark {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 0.6875rem;
+  color: var(--text-soft);
+  white-space: nowrap;
+  line-height: 32px;
+  padding: 0 2px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.tl-grid-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+  pointer-events: none;
+}
+
+.tl-now-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--danger);
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.7;
+}
+
+/* ── Appointment blocks ──────────────────────────────────────────── */
+
+.tl-block {
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  border-radius: 6px;
+  border-width: 1.5px;
+  border-style: solid;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 6px;
+  cursor: default;
+  transition: filter 0.1s;
+  z-index: 1;
+  box-sizing: border-box;
+  min-width: 4px;
+}
+
+.tl-block:hover {
+  filter: brightness(0.91);
+  z-index: 3;
+}
+
+.tl-block-active {
+  border-style: dashed;
+}
+
+.tl-block-name {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+}
+
+.tl-block-dur {
+  font-size: 0.625rem;
+  opacity: 0.75;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+}
+
+/* ── Gap labels ──────────────────────────────────────────────────── */
+
+.tl-gap {
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.tl-gap-label {
+  font-size: 0.625rem;
+  color: var(--text-soft);
+  white-space: nowrap;
+  padding: 0 2px;
+  opacity: 0.7;
+  user-select: none;
+}
+
+/* ── Tooltip ─────────────────────────────────────────────────────── */
+
+.tl-tooltip {
+  position: fixed;
+  z-index: 200;
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  padding: 10px 14px;
+  min-width: 200px;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.tl-tooltip-name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.tl-tooltip-type {
+  font-size: 0.75rem;
+  color: var(--text-soft);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.tl-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.75rem;
+  color: var(--text);
+}
+
+.tl-tooltip-row span:first-child {
+  color: var(--text-soft);
+  flex-shrink: 0;
+}
+
+.tl-tooltip-active span {
+  color: var(--accent) !important;
+  font-weight: 600;
+}
+
+/* ── Color legend ────────────────────────────────────────────────── */
+
+.tl-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-muted);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.tl-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.75rem;
+  color: var(--text);
+}
+
+.tl-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.tl-legend-item-sold {
+  margin-left: auto;
+  padding-left: 16px;
+  border-left: 1px solid var(--border);
+}
+
+/* ── Section labels ──────────────────────────────────────────────── */
+
+.tl-section-label {
+  padding: 5px 14px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Empty state ─────────────────────────────────────────────────── */
+
+.tl-empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-soft);
+  font-size: 0.9375rem;
+}
+
+.tl-empty p {
+  margin: 0;
+}
+
+/* ── Week summary ────────────────────────────────────────────────── */
+
+.tl-week-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-strong);
+}
+
+.tl-week-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 580px;
+}
+
+.tl-week-table th,
+.tl-week-table td {
+  border: 1px solid var(--border);
+}
+
+.tl-week-table thead tr {
+  background: var(--surface-muted);
+}
+
+.tl-week-th-name {
+  text-align: left;
+  padding: 8px 14px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  min-width: 130px;
+  white-space: nowrap;
+}
+
+.tl-week-th-day {
+  text-align: center;
+  padding: 4px 6px;
+  min-width: 88px;
+}
+
+.tl-week-th-total {
+  text-align: center;
+  padding: 8px 10px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  min-width: 88px;
+  white-space: nowrap;
+}
+
+.tl-week-day-btn {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.12s, color 0.12s;
+  font-family: var(--font-sans);
+}
+
+.tl-week-day-btn:hover {
+  background: rgba(125, 88, 58, 0.08);
+  color: var(--text);
+}
+
+.tl-week-day-btn-active {
+  background: var(--accent);
+  color: white;
+}
+
+.tl-week-day-btn-active:hover {
+  background: var(--accent-deep);
+  color: white;
+}
+
+.tl-week-td-name {
+  padding: 10px 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.tl-week-td-cell {
+  padding: 0;
+  transition: background 0.1s;
+  vertical-align: middle;
+}
+
+.tl-week-cell-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: center;
+  min-height: 56px;
+  justify-content: center;
+  transition: filter 0.1s;
+  font-family: var(--font-sans);
+}
+
+.tl-week-cell-btn:hover:not(:disabled) {
+  filter: brightness(0.91);
+}
+
+.tl-week-cell-btn:disabled {
+  cursor: default;
+}
+
+.tl-week-cell-appts {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+  display: block;
+}
+
+.tl-week-cell-floor {
+  font-size: 0.6875rem;
+  color: var(--text-soft);
+  line-height: 1.2;
+  display: block;
+}
+
+.tl-week-cell-gap {
+  font-size: 0.625rem;
+  color: var(--text-soft);
+  opacity: 0.75;
+  line-height: 1.2;
+  display: block;
+}
+
+.tl-week-cell-empty {
+  color: var(--text-soft);
+  opacity: 0.35;
+  font-size: 0.9375rem;
+  display: block;
+}
+
+.tl-week-td-total {
+  padding: 10px 12px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.tl-week-td-total strong {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.tl-week-td-total span {
+  display: block;
+  font-size: 0.6875rem;
+  color: var(--text-soft);
+  line-height: 1.3;
+}
+
+.tl-week-hint {
+  padding: 9px 16px;
+  font-size: 0.75rem;
+  color: var(--text-soft);
+  border-top: 1px solid var(--border);
+  text-align: center;
+  background: var(--surface-muted);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+/* ── Timeline responsive ─────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .tl-controls {
+    gap: 10px;
+  }
+
+  .tl-nav {
+    order: 3;
+    width: 100%;
+    flex: none;
+  }
+
+  .tl-date-picker {
+    order: 2;
+    margin-left: auto;
+  }
+
+  .tl-date-label {
+    font-size: 0.875rem;
+    min-width: 0;
+  }
+
+  .tl-name-col {
+    flex: 0 0 120px;
+    width: 120px;
+    min-width: 120px;
+    padding: 8px 10px;
+  }
+}

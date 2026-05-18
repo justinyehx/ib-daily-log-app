@@ -8,7 +8,7 @@ import { getCurrentSession } from "@/lib/auth";
 import { getDailyLogData } from "@/lib/daily-log-data";
 import { createDailyLogEntry, deleteDailyLogEntry, updateDailyLogEntry } from "@/lib/server/daily-log-actions";
 import { formatStaffDisplayName } from "@/lib/staff-display";
-import { safeTimezone } from "@/lib/tz-utils";
+import { getTodayDateString, safeTimezone } from "@/lib/tz-utils";
 
 export const dynamic = "force-dynamic";
 
@@ -34,9 +34,16 @@ export default async function DailyLogPage({ searchParams }: DailyLogPageProps) 
     return null;
   }
 
+  // Use the store's local timezone so the default date and time are correct
+  // even when the server clock (UTC) rolls past midnight before local midnight.
+  const todayDate = getTodayDateString(timezone);
   const now = new Date();
-  const todayDate = now.toISOString().slice(0, 10);
-  const defaultTime = `${`${now.getHours()}`.padStart(2, "0")}:${`${now.getMinutes()}`.padStart(2, "0")}`;
+  const defaultTime = new Intl.DateTimeFormat("en-CA", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: timezone
+  }).format(now).replace(",", "").trim();
 
   return (
     <AppShell

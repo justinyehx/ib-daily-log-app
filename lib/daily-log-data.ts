@@ -1,11 +1,12 @@
 import { AppointmentStatus, StoreOptionKind, VisitType } from "@prisma/client";
 
 import { dailyLogAppointmentSelect } from "@/lib/appointment-selects";
+import { skipsBridalDetailFields, skipsPurchasedField } from "@/lib/appointment-form-utils";
 import { prisma } from "@/lib/prisma";
 import { runTimed } from "@/lib/server-performance";
 import { normalizeKey } from "@/lib/strings";
 import { getAllStoreChoices, getStoreViewShell } from "@/lib/store-views";
-import { skipsBridalDetailFields } from "@/lib/appointment-form-utils";
+import { getTodayDateString } from "@/lib/tz-utils";
 
 export type DailyLogView = "day" | "week" | "month" | "year";
 
@@ -297,10 +298,12 @@ export async function getDailyLogData(
     }
     const store = shell.store;
 
-  const today = new Date();
-  const todayStart = startOfDay(today);
-  const todayEnd = endOfDay(today);
-  const twelveMonthsAgo = new Date(today);
+  // Use the user's local timezone so "today" is correct even late at night.
+  const todayDateStr = getTodayDateString(timezone);
+  const [ty, tm, td] = todayDateStr.split("-").map(Number);
+  const todayStart = new Date(Date.UTC(ty, tm - 1, td, 0, 0, 0, 0));
+  const todayEnd = new Date(Date.UTC(ty, tm - 1, td, 23, 59, 59, 999));
+  const twelveMonthsAgo = new Date(todayStart);
   twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
 
   const needsDateDefault = !hasMeaningfulReportingSearchParams(searchParams);
@@ -608,7 +611,7 @@ export async function getDailyLogData(
         timeOut: formatTime(appointment.timeOut, timezone),
         heardAbout: appointment.leadSourceLabel || "—",
         pricePoint: appointment.pricePointLabel || "—",
-        purchased: skipsBridalDetailFields(appointment.appointmentTypeLabel) ? "—" : appointment.purchased === null ? "Pending" : appointment.purchased ? "Yes" : "No",
+        purchased: skipsPurchasedField(appointment.appointmentTypeLabel) ? "—" : appointment.purchased === null ? "Pending" : appointment.purchased ? "Yes" : "No",
         otherSale:
           appointment.otherPurchase === null ? "—" : appointment.otherPurchase ? "Yes" : "No",
         comments: appointment.comments || "—",
@@ -645,7 +648,7 @@ export async function getDailyLogData(
       sizeOptionId: appointment.sizeOptionId || "",
       size: appointment.sizeLabel || "—",
       wearDateRaw: appointment.wearDate ? appointment.wearDate.toISOString().slice(0, 10) : "",
-      purchased: skipsBridalDetailFields(appointment.appointmentTypeLabel) ? "—" : appointment.purchased === null ? "Pending" : appointment.purchased ? "Yes" : "No",
+      purchased: skipsPurchasedField(appointment.appointmentTypeLabel) ? "—" : appointment.purchased === null ? "Pending" : appointment.purchased ? "Yes" : "No",
       otherSale:
         appointment.otherPurchase === null ? "—" : appointment.otherPurchase ? "Yes" : "No",
       statusRaw: appointment.status,
@@ -657,12 +660,15 @@ export async function getDailyLogData(
             : "Active",
       comments: appointment.comments || "—",
       commentsRaw: appointment.comments || "",
-      incompleteFields: [
-        appointment.assignedStaffMember ? "" : "Assigned",
-        appointment.leadSourceLabel ? "" : "Heard From",
-        appointment.pricePointLabel ? "" : "Price",
-        appointment.sizeLabel ? "" : "Size"
-      ].filter(Boolean)
+      incompleteFields: (() => {
+        const skipsBridal = skipsBridalDetailFields(appointment.appointmentTypeLabel);
+        return [
+          appointment.assignedStaffMember ? "" : "Assigned",
+          appointment.leadSourceLabel ? "" : "Heard From",
+          !skipsBridal && !appointment.pricePointLabel ? "Price" : "",
+          !skipsBridal && !appointment.sizeLabel ? "Size" : ""
+        ].filter(Boolean);
+      })()
       }))
     };
   });
