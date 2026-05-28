@@ -38,13 +38,7 @@ async function getAuthenticatedRole() {
 }
 
 function revalidateSettingsAndLogin() {
-  revalidatePath("/settings");
-  revalidatePath("/login");
-  revalidatePath("/dashboard");
-  revalidatePath("/daily-log");
-  revalidatePath("/analytics");
-  revalidatePath("/stylists");
-  revalidatePath("/admin-view");
+  revalidatePath("/", "layout");
 }
 
 function optionKindFromFormKind(formKind: string) {
@@ -158,12 +152,7 @@ export async function addSettingsItem(formData: FormData) {
     });
   }
 
-  revalidatePath("/settings");
-  revalidatePath("/dashboard");
-  revalidatePath("/daily-log");
-  revalidatePath("/analytics");
-  revalidatePath("/stylists");
-  revalidatePath("/admin-view");
+  revalidatePath("/", "layout");
 }
 
 export async function removeSettingsItem(formData: FormData) {
@@ -191,12 +180,7 @@ export async function removeSettingsItem(formData: FormData) {
     });
   }
 
-  revalidatePath("/settings");
-  revalidatePath("/dashboard");
-  revalidatePath("/daily-log");
-  revalidatePath("/analytics");
-  revalidatePath("/stylists");
-  revalidatePath("/admin-view");
+  revalidatePath("/", "layout");
 }
 
 export async function createUserAccount(formData: FormData) {
@@ -317,12 +301,7 @@ export async function applyAccessSettings(formData: FormData) {
   if (normalizedRole === "USER") {
     cookieStore.set("ib-demo-role", "USER");
     cookieStore.set("ib-demo-stylist", "");
-    revalidatePath("/dashboard");
-    revalidatePath("/daily-log");
-    revalidatePath("/analytics");
-    revalidatePath("/stylists");
-    revalidatePath("/settings");
-    revalidatePath("/admin-view");
+    revalidatePath("/", "layout");
     return;
   }
 
@@ -335,12 +314,7 @@ export async function applyAccessSettings(formData: FormData) {
     }
     cookieStore.set("ib-demo-role", "STYLIST");
     cookieStore.set("ib-demo-stylist", stylistName);
-    revalidatePath("/dashboard");
-    revalidatePath("/daily-log");
-    revalidatePath("/analytics");
-    revalidatePath("/stylists");
-    revalidatePath("/settings");
-    revalidatePath("/admin-view");
+    revalidatePath("/", "layout");
     return;
   }
 
@@ -350,12 +324,7 @@ export async function applyAccessSettings(formData: FormData) {
     }
     cookieStore.set("ib-demo-role", "MANAGER");
     cookieStore.set("ib-demo-stylist", "");
-    revalidatePath("/dashboard");
-    revalidatePath("/daily-log");
-    revalidatePath("/analytics");
-    revalidatePath("/stylists");
-    revalidatePath("/settings");
-    revalidatePath("/admin-view");
+    revalidatePath("/", "layout");
     return;
   }
 
@@ -368,12 +337,7 @@ export async function applyAccessSettings(formData: FormData) {
   if (storeSlug) {
     cookieStore.set("ib-demo-store", storeSlug);
   }
-  revalidatePath("/dashboard");
-  revalidatePath("/daily-log");
-  revalidatePath("/analytics");
-  revalidatePath("/stylists");
-  revalidatePath("/settings");
-  revalidatePath("/admin-view");
+  revalidatePath("/", "layout");
 }
 
 export async function updateStaffMemberRole(formData: FormData) {
@@ -390,27 +354,9 @@ export async function updateStaffMemberRole(formData: FormData) {
     data: { role: roleInput as StaffRole }
   });
 
-  revalidatePath("/settings");
-  revalidatePath("/dashboard");
-  revalidatePath("/daily-log");
-  redirect("/settings?dropdown=staff");
+  revalidatePath("/", "layout");
+  const storeSlugForRedirect = asString(formData.get("storeSlug"));
+  redirect(`/${storeSlugForRedirect}/settings?dropdown=staff`);
 }
 
-export async function switchDemoStore(formData: FormData) {
-  await requireAdminCookie();
-  const storeSlug = asString(formData.get("storeSlug"));
-  if (!storeSlug) {
-    throw new Error("Store is required.");
-  }
 
-  const cookieStore = await cookies();
-  cookieStore.set("ib-demo-store", storeSlug);
-
-  revalidatePath("/dashboard");
-  revalidatePath("/daily-log");
-  revalidatePath("/analytics");
-  revalidatePath("/stylists");
-  revalidatePath("/settings");
-  revalidatePath("/admin-view");
-  redirect("/dashboard");
-}

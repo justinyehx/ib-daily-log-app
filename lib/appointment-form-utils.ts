@@ -28,12 +28,15 @@ export function skipsBridalDetailFields(value: string) {
 /**
  * Returns true when checkout should NOT ask whether a gown was purchased.
  * Comeback Bride is intentionally excluded — they can (and often do) buy a gown.
+ * Accessories is excluded because "Other sale" captures those purchases; there
+ * is no gown to track, so reason-did-not-buy and CB appointment make no sense.
  */
 export function skipsPurchasedField(value: string) {
   const normalized = value.trim().toLowerCase();
   if (!normalized) return false;
 
   return (
+    normalized === "accessories" ||
     normalized === "presentation" ||
     normalized === "phone order" ||
     normalized === "pay" ||

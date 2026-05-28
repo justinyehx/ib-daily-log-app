@@ -4,5 +4,9 @@ import { getCurrentSession } from "@/lib/auth";
 
 export default async function HomePage() {
   const session = await getCurrentSession();
-  redirect(session.isAuthenticated ? (session.role === "STYLIST" ? "/stylists" : "/dashboard") : "/login");
+  if (!session.isAuthenticated) redirect("/login");
+  redirect(session.role === "STYLIST"
+    ? `/${session.storeSlug}/stylists`
+    : `/${session.storeSlug}/dashboard`
+  );
 }

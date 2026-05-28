@@ -2767,6 +2767,47 @@ textarea:disabled {
 
 /* ── Root & controls ─────────────────────────────────────────────── */
 
+/* ── Store switcher links (replaces the old form) ────────────────── */
+
+.store-switcher-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.store-switcher-link {
+  display: block;
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-soft);
+  text-decoration: none;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.store-switcher-link:hover {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.store-switcher-link.active {
+  background: var(--accent);
+  color: white;
+}
+
+/* ── Settings store links ─────────────────────────────────────────── */
+
+.settings-store-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
 .tl-root {
   display: flex;
   flex-direction: column;

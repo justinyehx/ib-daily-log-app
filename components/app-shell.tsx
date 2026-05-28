@@ -7,12 +7,12 @@ import { SubmitButton } from "@/components/submit-button";
 import { TimezoneSync } from "@/components/timezone-sync";
 import type { CurrentSession } from "@/lib/auth";
 import { signOutDemo } from "@/lib/server/auth-actions";
-import { switchDemoStore } from "@/lib/server/settings-actions";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type AppShellProps = {
   activeView: "dashboard" | "daily-log" | "analytics" | "stylists" | "timeline" | "settings" | "admin-view";
+  storeSlug: string;
   storeName: string;
   session: CurrentSession;
   snapshot: {
@@ -27,18 +27,20 @@ type AppShellProps = {
   children: React.ReactNode;
 };
 
-const navItems: Array<{
+function buildNavItems(storeSlug: string): Array<{
   key: AppShellProps["activeView"];
   label: string;
   href?: string;
-}> = [
-  { key: "dashboard", label: "Dashboard", href: "/dashboard" },
-  { key: "daily-log", label: "Daily Log", href: "/daily-log" },
-  { key: "analytics", label: "Analytics", href: "/analytics" },
-  { key: "timeline", label: "Timeline", href: "/analytics/timeline" },
-  { key: "stylists", label: "Stylists", href: "/stylists" },
-  { key: "admin-view", label: "Admin View", href: "/admin-view" }
-];
+}> {
+  return [
+    { key: "dashboard", label: "Dashboard", href: `/${storeSlug}/dashboard` },
+    { key: "daily-log", label: "Daily Log", href: `/${storeSlug}/daily-log` },
+    { key: "analytics", label: "Analytics", href: `/${storeSlug}/analytics` },
+    { key: "timeline", label: "Timeline", href: `/${storeSlug}/analytics/timeline` },
+    { key: "stylists", label: "Stylists", href: `/${storeSlug}/stylists` },
+    { key: "admin-view", label: "Admin View", href: `/${storeSlug}/admin-view` },
+  ];
+}
 
 const ROLE_LABELS: Record<CurrentSession["role"], string> = {
   USER: "User",
@@ -49,9 +51,10 @@ const ROLE_LABELS: Record<CurrentSession["role"], string> = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function AppShell({ activeView, storeName, session, snapshot, stores = [], children }: AppShellProps) {
+export function AppShell({ activeView, storeSlug, storeName, session, snapshot, stores = [], children }: AppShellProps) {
   const [navOpen, setNavOpen] = useState(false);
 
+  const navItems = buildNavItems(storeSlug);
   const visibleNavItems = navItems.filter((item) => {
     if (session.role === "USER") {
       return item.key === "dashboard" || item.key === "daily-log";
@@ -129,18 +132,18 @@ export function AppShell({ activeView, storeName, session, snapshot, stores = []
             <p className="sidebar-label">Store View</p>
             <div className="store-switcher-row">
               {session.role === "ADMIN" && stores.length ? (
-                <form action={switchDemoStore} className="sidebar-store-form">
-                  <select className="select sidebar-store-select" defaultValue={session.storeSlug} name="storeSlug">
-                    {stores.map((store) => (
-                      <option key={store.slug} value={store.slug}>
-                        {store.name}
-                      </option>
-                    ))}
-                  </select>
-                  <SubmitButton className="button sidebar-store-button" pendingLabel="Changing...">
-                    Change
-                  </SubmitButton>
-                </form>
+                <div className="store-switcher-links">
+                  {stores.map((store) => (
+                    <Link
+                      key={store.slug}
+                      href={`/${store.slug}/dashboard`}
+                      className={`store-switcher-link${store.slug === storeSlug ? " active" : ""}`}
+                      onClick={() => setNavOpen(false)}
+                    >
+                      {store.name}
+                    </Link>
+                  ))}
+                </div>
               ) : (
                 <>
                   <strong className="sidebar-store-name">{storeName}</strong>
@@ -222,7 +225,7 @@ export function AppShell({ activeView, storeName, session, snapshot, stores = []
                 <Link
                   aria-label="Settings"
                   className={`settings-dock-link ${activeView === "settings" ? "active" : ""}`}
-                  href="/settings"
+                  href={`/${storeSlug}/settings`}
                   onClick={() => setNavOpen(false)}
                 >
                   <span aria-hidden="true">⚙</span>

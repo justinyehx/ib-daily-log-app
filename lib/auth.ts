@@ -48,11 +48,9 @@ export async function getCurrentSession(): Promise<CurrentSession> {
     });
 
     if (user) {
-      // Prefer the ib-demo-store cookie so admins can switch stores via the sidebar.
-      // On login, auth-actions sets the cookie to the user's assigned store, so the
-      // cookie is always correct. If it somehow isn't set, fall back to the DB store.
-      const switchedStoreSlug = cookieStore.get("ib-demo-store")?.value;
-      const userStoreSlug = switchedStoreSlug || user.store?.slug || appEnv.defaultStoreSlug;
+      // storeSlug is always the user's own assigned store — used for auth checks
+      // and default redirects. The active viewing store is determined by the URL.
+      const userStoreSlug = user.store?.slug || appEnv.defaultStoreSlug;
       return {
         fullName: user.role === "STYLIST" && user.staffMember?.fullName ? user.staffMember.fullName : user.fullName,
         role: user.role,

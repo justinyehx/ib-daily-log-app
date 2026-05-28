@@ -13,13 +13,7 @@ function asString(value: FormDataEntryValue | null) {
 }
 
 function revalidateAll() {
-  revalidatePath("/dashboard");
-  revalidatePath("/daily-log");
-  revalidatePath("/analytics");
-  revalidatePath("/stylists");
-  revalidatePath("/settings");
-  revalidatePath("/admin-view");
-  revalidatePath("/login");
+  revalidatePath("/", "layout");
 }
 
 export async function signInDemo(formData: FormData) {
@@ -51,7 +45,7 @@ export async function signInDemo(formData: FormData) {
   cookieStore.set("ib-demo-stylist", user.role === "STYLIST" ? user.staffMember?.fullName || user.fullName : "");
 
   revalidateAll();
-  redirect(user.role === "STYLIST" ? "/stylists" : "/dashboard");
+  redirect(user.role === "STYLIST" ? `/${userStoreSlug}/stylists` : `/${userStoreSlug}/dashboard`);
 }
 
 export async function signOutDemo() {
