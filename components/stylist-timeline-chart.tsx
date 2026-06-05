@@ -597,15 +597,17 @@ function WeekSummary({
 export function StylistTimelineChart({
   data,
   timezone,
+  storeSlug,
 }: {
   data: TimelineData;
   timezone: string;
+  storeSlug: string;
 }) {
   const router = useRouter();
   const [view, setView] = useState<"day" | "week">("day");
 
   function navigateToDate(date: string, targetView: "day" | "week" = "day") {
-    router.push(`/analytics/timeline?date=${date}&view=${targetView}`);
+    router.push(`/${storeSlug}/analytics/timeline?date=${date}&view=${targetView}`);
     setView(targetView);
   }
 

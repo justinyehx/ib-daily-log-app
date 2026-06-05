@@ -8,7 +8,7 @@ import { normalizeKey } from "@/lib/strings";
 import { getAllStoreChoices, getStoreViewShell } from "@/lib/store-views";
 import { getTodayDateString } from "@/lib/tz-utils";
 
-export type DailyLogView = "day" | "week" | "month" | "year";
+export type DailyLogView = "day" | "week" | "month" | "year" | "custom";
 
 type DailyLogFilters = {
   view: DailyLogView;
@@ -16,6 +16,8 @@ type DailyLogFilters = {
   week: string;
   month: string;
   year: string;
+  dateFrom: string;
+  dateTo: string;
   visitType: string;
   appointmentType: string;
   customerName: string;
@@ -150,12 +152,15 @@ function getDefaultFilters() {
   const weekNumber =
     Math.ceil(((weekStart.getTime() - getStartOfWeek(firstDayOfYear).getTime()) / 86400000 + 1) / 7) || 1;
 
+  const today = month + `-${String(now.getDate()).padStart(2, "0")}`;
   return {
     view: "day" as DailyLogView,
-    day: month + `-${String(now.getDate()).padStart(2, "0")}`,
+    day: today,
     week: `${year}-W${String(weekNumber).padStart(2, "0")}`,
     month,
     year,
+    dateFrom: today,
+    dateTo: today,
     visitType: "",
     appointmentType: "",
     customerName: ""
@@ -172,11 +177,13 @@ function resolveFilters(searchParams?: Record<string, string | string[] | undefi
   const view = read("view");
 
   return {
-    view: view === "week" || view === "month" || view === "year" ? view : defaults.view,
+    view: view === "week" || view === "month" || view === "year" || view === "custom" ? view : defaults.view,
     day: read("day") || defaults.day,
     week: read("week") || defaults.week,
     month: read("month") || defaults.month,
     year: read("year") || defaults.year,
+    dateFrom: read("dateFrom") || defaults.dateFrom,
+    dateTo: read("dateTo") || defaults.dateTo,
     visitType: read("visitType") || "",
     appointmentType: read("appointmentType") || "",
     customerName: read("customerName") || ""
@@ -186,7 +193,7 @@ function resolveFilters(searchParams?: Record<string, string | string[] | undefi
 function hasMeaningfulReportingSearchParams(searchParams?: Record<string, string | string[] | undefined>) {
   if (!searchParams) return false;
 
-  return ["view", "day", "week", "month", "year", "visitType", "appointmentType", "customerName"].some((key) => {
+  return ["view", "day", "week", "month", "year", "dateFrom", "dateTo", "visitType", "appointmentType", "customerName"].some((key) => {
     const value = searchParams[key];
     if (Array.isArray(value)) return value.length > 0;
     return typeof value === "string" && value.length > 0;
@@ -213,13 +220,27 @@ function getDateRange(filters: DailyLogFilters) {
     return { start: startOfDay(start), end: endOfDay(end) };
   }
 
+  if (filters.view === "custom") {
+    const from = filters.dateFrom ? new Date(filters.dateFrom) : new Date();
+    const to = filters.dateTo ? new Date(filters.dateTo) : from;
+    const start = from <= to ? from : to;
+    const end = from <= to ? to : from;
+    return { start: startOfDay(start), end: endOfDay(end) };
+  }
+
   const start = new Date(Number(filters.year), 0, 1);
   const end = new Date(Number(filters.year), 11, 31);
   return { start: startOfDay(start), end: endOfDay(end) };
 }
 
 function getFilterSummary(filters: DailyLogFilters) {
-  let summary = filters.view === "day" ? filters.day : filters.view === "week" ? filters.week : filters.view === "month" ? filters.month : filters.year;
+  const { start, end } = getDateRange(filters);
+  const fmt = (d: Date) => new Intl.DateTimeFormat("en-US", { month: "numeric", day: "numeric", year: "numeric" }).format(d);
+  let summary = filters.view === "day" ? filters.day
+    : filters.view === "week" ? filters.week
+    : filters.view === "month" ? filters.month
+    : filters.view === "custom" ? `${fmt(start)} – ${fmt(end)}`
+    : filters.year;
   if (filters.visitType) {
     summary += ` • Visit: ${filters.visitType === "WALK_IN" ? "Walk-in" : "Appointment"}`;
   }

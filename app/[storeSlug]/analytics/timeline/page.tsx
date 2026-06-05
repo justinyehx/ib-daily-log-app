@@ -59,7 +59,7 @@ export default async function TimelinePage({ params, searchParams }: TimelinePag
               <h3>Time with customers and downtime by stylist</h3>
             </div>
           </div>
-          <StylistTimelineChart data={data} timezone={timezone} />
+          <StylistTimelineChart data={data} timezone={timezone} storeSlug={storeSlug} />
         </section>
       </div>
     </AppShell>

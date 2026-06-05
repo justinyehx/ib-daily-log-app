@@ -840,7 +840,7 @@ textarea:disabled {
 
 .report-controls {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 12px;
   align-items: end;
   position: relative;
@@ -871,11 +871,11 @@ textarea:disabled {
 }
 
 .report-date-field {
-  max-width: 190px;
+  min-width: 0;
 }
 
 .report-year-field {
-  max-width: 150px;
+  min-width: 0;
 }
 
 .button {
@@ -2766,6 +2766,25 @@ textarea:disabled {
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Root & controls ─────────────────────────────────────────────── */
+
+/* ── Checkout duration indicator ─────────────────────────────────── */
+
+.checkout-duration-ok,
+.checkout-duration-warn {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.checkout-duration-ok {
+  color: var(--text-soft);
+}
+
+.checkout-duration-warn {
+  color: var(--danger);
+}
 
 /* ── Store switcher links (replaces the old form) ────────────────── */
 

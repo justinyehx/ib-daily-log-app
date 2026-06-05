@@ -55,6 +55,31 @@ export type PricePointOption = { id: string; label: string };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/** Returns prospective duration in minutes between a UTC ISO check-in and a local HH:MM checkout. */
+function prospectiveDuration(timeInAt: string, timeOutHHMM: string): number | null {
+  if (!timeOutHHMM || !timeInAt) return null;
+  try {
+    const [h, m] = timeOutHHMM.split(":").map(Number);
+    if (isNaN(h) || isNaN(m)) return null;
+    const timeIn = new Date(timeInAt);
+    const checkout = new Date(timeIn);
+    checkout.setHours(h, m, 0, 0);
+    // If checkout landed before check-in, roll to next day (cross-midnight edge case)
+    if (checkout <= timeIn) checkout.setDate(checkout.getDate() + 1);
+    const mins = Math.round((checkout.getTime() - timeIn.getTime()) / 60000);
+    return mins > 0 ? mins : null;
+  } catch {
+    return null;
+  }
+}
+
+function formatDurationMins(mins: number): string {
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
+
 function purchaseValue(value: boolean | null) {
   if (value === true) return "Yes";
   if (value === false) return "No";
@@ -294,6 +319,16 @@ export function CustomerCheckoutCard({
               onChange={(event) => { timeUserEdited.current = true; setTimeOutValue(event.target.value); }}
               required
             />
+            {(() => {
+              const mins = prospectiveDuration(customer.timeInAt, timeOutValue);
+              if (mins == null) return null;
+              const warn = mins > 180;
+              return (
+                <span className={warn ? "checkout-duration-warn" : "checkout-duration-ok"}>
+                  {warn ? `⚠ ${formatDurationMins(mins)} — check AM/PM` : formatDurationMins(mins)}
+                </span>
+              );
+            })()}
           </label>
 
           {showPurchasedField ? (

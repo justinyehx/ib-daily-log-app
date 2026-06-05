@@ -1,6 +1,6 @@
 import { AppointmentStatus, VisitType, type Appointment, type Customer, type Location, type StaffMember } from "@prisma/client";
 
-export type ReportingView = "day" | "week" | "twoWeek" | "month" | "year";
+export type ReportingView = "day" | "week" | "twoWeek" | "month" | "year" | "custom";
 
 export type ReportingFilters = {
   store: string;
@@ -10,6 +10,8 @@ export type ReportingFilters = {
   twoWeek: string;
   month: string;
   year: string;
+  dateFrom: string;
+  dateTo: string;
   pricePoint: string;
   appointmentType: string;
   visitType: string;
@@ -106,6 +108,8 @@ export function getDefaultReportingFilters(): ReportingFilters {
     twoWeek: formatDateInputValue(getPreviousTwoWeekStart(now)),
     month,
     year,
+    dateFrom: formatDateInputValue(now),
+    dateTo: formatDateInputValue(now),
     pricePoint: "",
     appointmentType: "",
     visitType: ""
@@ -124,7 +128,7 @@ export function resolveReportingFilters(searchParams?: Record<string, string | s
   return {
     store: read("store") || "",
     view:
-      view === "week" || view === "twoWeek" || view === "month" || view === "year"
+      view === "week" || view === "twoWeek" || view === "month" || view === "year" || view === "custom"
         ? view
         : defaults.view,
     day: read("day") || defaults.day,
@@ -132,6 +136,8 @@ export function resolveReportingFilters(searchParams?: Record<string, string | s
     twoWeek: read("twoWeek") || defaults.twoWeek,
     month: read("month") || defaults.month,
     year: read("year") || defaults.year,
+    dateFrom: read("dateFrom") || defaults.dateFrom,
+    dateTo: read("dateTo") || defaults.dateTo,
     pricePoint: read("pricePoint") || "",
     appointmentType: read("appointmentType") || "",
     visitType: read("visitType") || ""
@@ -165,6 +171,15 @@ export function getDateRange(filters: ReportingFilters) {
     return { start: startOfDay(start), end: endOfDay(end) };
   }
 
+  if (filters.view === "custom") {
+    const from = filters.dateFrom ? new Date(filters.dateFrom) : new Date();
+    const to = filters.dateTo ? new Date(filters.dateTo) : from;
+    // Ensure from <= to
+    const start = from <= to ? from : to;
+    const end = from <= to ? to : from;
+    return { start: startOfDay(start), end: endOfDay(end) };
+  }
+
   const start = new Date(Number(filters.year), 0, 1);
   const end = new Date(Number(filters.year), 11, 31);
   return { start: startOfDay(start), end: endOfDay(end) };
@@ -180,7 +195,9 @@ export function getFilterSummary(filters: ReportingFilters) {
           ? `${formatDate(getDateRange(filters).start)} - ${formatDate(getDateRange(filters).end)}`
           : filters.view === "month"
             ? formatMonthSummary(filters.month)
-            : filters.year;
+            : filters.view === "custom"
+              ? `${formatDate(getDateRange(filters).start)} – ${formatDate(getDateRange(filters).end)}`
+              : filters.year;
 
   if (filters.store) {
     summary = `${filters.store} • ${summary}`;

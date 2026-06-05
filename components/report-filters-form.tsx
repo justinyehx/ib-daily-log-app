@@ -6,12 +6,14 @@ import { type FormEvent, useTransition, useState } from "react";
 type ReportFiltersFormProps = {
   filters: {
     store?: string;
-    view: "day" | "week" | "twoWeek" | "month" | "year";
+    view: "day" | "week" | "twoWeek" | "month" | "year" | "custom";
     day: string;
     week: string;
     twoWeek?: string;
     month: string;
     year: string;
+    dateFrom?: string;
+    dateTo?: string;
     pricePoint?: string;
     visitType?: string;
     appointmentType?: string;
@@ -38,7 +40,7 @@ export function ReportFiltersForm({
   showTwoWeek = false,
   showEmployeeView = false
 }: ReportFiltersFormProps) {
-  const [view, setView] = useState<"day" | "week" | "twoWeek" | "month" | "year">(filters.view);
+  const [view, setView] = useState<"day" | "week" | "twoWeek" | "month" | "year" | "custom">(filters.view);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -57,6 +59,8 @@ export function ReportFiltersForm({
       "twoWeek",
       "month",
       "year",
+      "dateFrom",
+      "dateTo",
       "pricePoint",
       "visitType",
       "appointmentType",
@@ -98,7 +102,7 @@ export function ReportFiltersForm({
           className="select"
           name="view"
           onChange={(event) =>
-            setView(event.target.value as "day" | "week" | "twoWeek" | "month" | "year")
+            setView(event.target.value as "day" | "week" | "twoWeek" | "month" | "year" | "custom")
           }
           value={view}
         >
@@ -107,6 +111,7 @@ export function ReportFiltersForm({
           {showTwoWeek ? <option value="twoWeek">2-Week</option> : null}
           <option value="month">Month</option>
           <option value="year">Year</option>
+          <option value="custom">Custom Range</option>
         </select>
       </label>
 
@@ -143,6 +148,19 @@ export function ReportFiltersForm({
           <span className="field-label">Year</span>
           <input className="input" name="year" type="number" defaultValue={filters.year} />
         </label>
+      ) : null}
+
+      {view === "custom" ? (
+        <>
+          <label className="field report-date-field">
+            <span className="field-label">From</span>
+            <input className="input" name="dateFrom" type="date" defaultValue={filters.dateFrom} />
+          </label>
+          <label className="field report-date-field">
+            <span className="field-label">To</span>
+            <input className="input" name="dateTo" type="date" defaultValue={filters.dateTo} />
+          </label>
+        </>
       ) : null}
 
       {showPricePoint ? (

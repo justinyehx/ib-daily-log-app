@@ -501,6 +501,21 @@ export function DailyLogWorkflowPanel({
               type="time"
               value={formState.timeOut}
             />
+            {(() => {
+              if (!formState.timeIn || !formState.timeOut) return null;
+              const [inH, inM] = formState.timeIn.split(":").map(Number);
+              const [outH, outM] = formState.timeOut.split(":").map(Number);
+              if (isNaN(inH) || isNaN(outH)) return null;
+              let mins = (outH * 60 + outM) - (inH * 60 + inM);
+              if (mins <= 0) mins += 24 * 60; // cross-midnight
+              const warn = mins > 180;
+              const label = mins < 60 ? `${mins}m` : `${Math.floor(mins/60)}h${mins%60 ? ` ${mins%60}m` : ""}`;
+              return (
+                <span className={warn ? "checkout-duration-warn" : "checkout-duration-ok"}>
+                  {warn ? `⚠ ${label} — check AM/PM` : label}
+                </span>
+              );
+            })()}
           </label>
 
           <label className="field">
