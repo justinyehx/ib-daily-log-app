@@ -10,6 +10,7 @@ import {
   createDashboardCheckIn,
   dismissCurrentCustomer,
   quickCheckoutCurrentCustomer,
+  saveAppointmentDetails,
   updateCurrentCustomerStatus
 } from "@/lib/server/dashboard-actions";
 import { safeTimezone, getTodayDateString } from "@/lib/tz-utils";
@@ -163,6 +164,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
           leadSourceOptions={dashboard.quickCheckInOptions.leadSources}
           pricePointOptions={dashboard.quickCheckInOptions.pricePoints}
           reasonOptions={dashboard.quickCheckInOptions.reasonDidNotBuyOptions}
+          saveDetailsAction={saveAppointmentDetails}
           sizeOptions={dashboard.quickCheckInOptions.sizes}
           staffOptions={dashboard.quickCheckInOptions.staffMembers.map((staffMember) => ({
             ...staffMember,

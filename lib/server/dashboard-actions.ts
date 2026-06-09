@@ -390,6 +390,69 @@ export async function quickCheckoutCurrentCustomer(formData: FormData) {
 }
 
 /**
+ * Saves in-progress appointment details (price, stylist, size, purchased, etc.)
+ * without checking the customer out. Status and timeOut are left unchanged.
+ */
+export async function saveAppointmentDetails(formData: FormData) {
+  const appointmentId = asString(formData.get("appointmentId"));
+  const purchasedInput = asString(formData.get("purchased"));
+  const otherPurchaseInput = asString(formData.get("otherPurchase"));
+  const comments = asString(formData.get("comments"));
+  const assignedStaffMemberId = asString(formData.get("assignedStaffMemberId"));
+  const wearDateInput = asString(formData.get("wearDate"));
+  const leadSourceOptionId = asString(formData.get("leadSourceOptionId"));
+  const pricePointOptionId = asString(formData.get("pricePointOptionId"));
+  const sizeOptionId = asString(formData.get("sizeOptionId"));
+
+  if (!appointmentId) throw new Error("Appointment is required.");
+
+  const appointment = await prisma.appointment.findUnique({ where: { id: appointmentId } });
+  if (!appointment) throw new Error("Appointment could not be found.");
+
+  const skipsPurchased = skipsPurchasedField(appointment.appointmentTypeLabel);
+
+  const [assignedStaffMember, leadSourceOption, pricePointOption, sizeOption] = await Promise.all([
+    assignedStaffMemberId
+      ? prisma.staffMember.findFirst({ where: { id: assignedStaffMemberId, storeId: appointment.storeId, isActive: true } })
+      : Promise.resolve(null),
+    leadSourceOptionId
+      ? prisma.storeOption.findFirst({ where: { id: leadSourceOptionId, storeId: appointment.storeId, kind: StoreOptionKind.LEAD_SOURCE, isActive: true } })
+      : Promise.resolve(null),
+    pricePointOptionId
+      ? prisma.storeOption.findFirst({ where: { id: pricePointOptionId, storeId: appointment.storeId, kind: StoreOptionKind.PRICE_POINT, isActive: true } })
+      : Promise.resolve(null),
+    sizeOptionId
+      ? prisma.storeOption.findFirst({ where: { id: sizeOptionId, storeId: appointment.storeId, kind: StoreOptionKind.SIZE, isActive: true } })
+      : Promise.resolve(null)
+  ]);
+
+  const wearDate = wearDateInput ? new Date(`${wearDateInput}T00:00:00`) : null;
+  const purchased =
+    purchasedInput === "Yes" ? true : purchasedInput === "No" ? false : appointment.purchased;
+  const otherPurchase =
+    otherPurchaseInput === "Yes" ? true : otherPurchaseInput === "No" ? false : appointment.otherPurchase;
+
+  await prisma.appointment.update({
+    where: { id: appointmentId },
+    data: {
+      assignedStaffMemberId: assignedStaffMember?.id || appointment.assignedStaffMemberId,
+      wearDate: wearDate || appointment.wearDate,
+      leadSourceOptionId: leadSourceOption?.id || appointment.leadSourceOptionId,
+      leadSourceLabel: leadSourceOption?.label || appointment.leadSourceLabel,
+      pricePointOptionId: pricePointOption?.id || appointment.pricePointOptionId,
+      pricePointLabel: pricePointOption?.label || appointment.pricePointLabel,
+      sizeOptionId: sizeOption?.id || appointment.sizeOptionId,
+      sizeLabel: sizeOption?.label || appointment.sizeLabel,
+      purchased: skipsPurchased ? appointment.purchased : purchased,
+      otherPurchase,
+      comments: comments || null
+    }
+  });
+
+  revalidatePath("/", "layout");
+}
+
+/**
  * Removes a stale customer card from the floor view without modifying any
  * time data. Sets status to COMPLETE and records when it was dismissed, but
  * intentionally leaves timeOut untouched so historical records stay accurate.

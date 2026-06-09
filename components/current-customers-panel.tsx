@@ -23,6 +23,7 @@ type CurrentCustomersPanelProps = {
   sizeOptions: SizeOption[];
   updateStatusAction: (formData: FormData) => void | Promise<void>;
   checkoutAction: (formData: FormData) => void | Promise<void>;
+  saveDetailsAction?: (formData: FormData) => void | Promise<void>;
   dismissAction?: (formData: FormData) => void | Promise<void>;
 };
 
@@ -35,6 +36,7 @@ export function CurrentCustomersPanel({
   sizeOptions,
   updateStatusAction,
   checkoutAction,
+  saveDetailsAction,
   dismissAction
 }: CurrentCustomersPanelProps) {
   const visibleCustomers = useMemo(
@@ -69,6 +71,7 @@ export function CurrentCustomersPanel({
               leadSourceOptions={leadSourceOptions}
               pricePointOptions={pricePointOptions}
               reasonOptions={reasonOptions}
+              saveDetailsAction={saveDetailsAction}
               sizeOptions={sizeOptions}
               staffOptions={staffOptions}
               updateStatusAction={updateStatusAction}

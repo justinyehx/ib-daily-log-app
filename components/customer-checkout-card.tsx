@@ -126,6 +126,7 @@ type CustomerCheckoutCardProps = {
   sizeOptions: SizeOption[];
   updateStatusAction: (formData: FormData) => void | Promise<void>;
   checkoutAction: (formData: FormData) => void | Promise<void>;
+  saveDetailsAction?: (formData: FormData) => void | Promise<void>;
   dismissAction?: (formData: FormData) => void | Promise<void>;
 };
 
@@ -138,12 +139,16 @@ export function CustomerCheckoutCard({
   sizeOptions,
   updateStatusAction,
   checkoutAction,
+  saveDetailsAction,
   dismissAction
 }: CustomerCheckoutCardProps) {
   const [purchased, setPurchased] = useState<"" | "Yes" | "No">(purchaseValue(customer.purchased));
   const [cbAppt, setCbAppt] = useState<"No" | "Yes">("No");
   const [timeOutValue, setTimeOutValue] = useState(getCurrentTimeValue());
   const timeUserEdited = useRef(false);
+  const [savedDetails, setSavedDetails] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     const tick = () => {
@@ -277,8 +282,124 @@ export function CustomerCheckoutCard({
         ) : null}
       </div>
 
+      {isEditing && saveDetailsAction ? (
+        <div className="customer-checkout-grid">
+          <form
+            className="customer-checkout-form field-span-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const formData = new FormData(event.currentTarget);
+              formData.set("appointmentId", customer.id);
+              startTransition(async () => {
+                try {
+                  await saveDetailsAction(formData);
+                  setSavedDetails(true);
+                  setIsEditing(false);
+                  setTimeout(() => setSavedDetails(false), 2500);
+                } catch (err) {
+                  console.error(err);
+                }
+              });
+            }}
+          >
+            {!hideBridalDetailFields ? (
+              <label className="field">
+                <FieldLabel>Price</FieldLabel>
+                <select className="select" name="pricePointOptionId" defaultValue={customer.pricePointOptionId || ""}>
+                  <option value="">Select price point</option>
+                  {pricePointOptions.map((option) => (
+                    <option key={option.id} value={option.id}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
+            <label className="field">
+              <FieldLabel>{useSeamstressField ? "Seamstress" : "Stylist"}</FieldLabel>
+              <select className="select" name="assignedStaffMemberId" defaultValue={customer.assignedStaffMemberId || ""}>
+                <option value="">{useSeamstressField ? "Select seamstress" : "Select stylist"}</option>
+                {visibleStaffOptions.map((staffOption) => (
+                  <option key={staffOption.id} value={staffOption.id}>{staffOption.fullName}</option>
+                ))}
+              </select>
+            </label>
+
+            {!hideBridalDetailFields ? (
+              <label className="field">
+                <FieldLabel>Wear date</FieldLabel>
+                <input className="input" name="wearDate" type="date" defaultValue={customer.wearDateRaw || ""} />
+              </label>
+            ) : null}
+
+            {!hideBridalDetailFields ? (
+              <label className="field">
+                <FieldLabel>Heard from</FieldLabel>
+                <select className="select" name="leadSourceOptionId" defaultValue={defaultLeadSourceOptionId}>
+                  <option value="">Select lead source</option>
+                  {leadSourceOptions.map((option) => (
+                    <option key={option.id} value={option.id}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
+            {!hideSizeField ? (
+              <label className="field">
+                <FieldLabel>Size</FieldLabel>
+                <select className="select" name="sizeOptionId" defaultValue={customer.sizeOptionId || ""}>
+                  <option value="">Select size</option>
+                  {sizeOptions.map((option) => (
+                    <option key={option.id} value={option.id}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+
+            {showPurchasedField ? (
+              <label className="field">
+                <FieldLabel>Purchased</FieldLabel>
+                <select className="select" name="purchased" defaultValue={purchaseValue(customer.purchased)}>
+                  <option value="">Select</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </label>
+            ) : (
+              <input type="hidden" name="purchased" value="" />
+            )}
+
+            <label className="field">
+              <FieldLabel>Other sale</FieldLabel>
+              <select className="select" name="otherPurchase" defaultValue={otherSaleValue(customer.otherPurchase)}>
+                <option value="No">No</option>
+                <option value="Yes">Yes</option>
+              </select>
+            </label>
+
+            <label className="field customer-comment-field">
+              <span className="field-label">Comment</span>
+              <textarea className="textarea" name="comments" rows={2} defaultValue={customer.comments || ""} placeholder="Add note" />
+            </label>
+
+            <div className="form-actions customer-action-row customer-actions-row">
+              <button
+                className="button secondary customer-action-button"
+                disabled={isPending}
+                onClick={() => setIsEditing(false)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <SubmitButton className="button customer-action-button" pendingLabel="Saving...">
+                Save
+              </SubmitButton>
+            </div>
+          </form>
+        </div>
+      ) : (
       <div className="customer-checkout-grid">
         <form
+          ref={formRef}
           action={checkoutAction}
           className="customer-checkout-form field-span-3"
           onSubmit={(event) => {
@@ -549,12 +670,23 @@ export function CustomerCheckoutCard({
                 Dismiss
               </button>
             ) : null}
+            {saveDetailsAction ? (
+              <button
+                className="button secondary customer-action-button"
+                disabled={isPending}
+                onClick={() => setIsEditing(true)}
+                type="button"
+              >
+                {savedDetails ? "Saved ✓" : "Edit"}
+              </button>
+            ) : null}
             <SubmitButton className="button customer-action-button" pendingLabel="Checking out...">
               Check Out
             </SubmitButton>
           </div>
         </form>
       </div>
+      )}
     </article>
   );
 }
