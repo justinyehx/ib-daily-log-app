@@ -376,37 +376,55 @@ function buildBreakdownRows(
     matcher: (appointment: ReportingAppointment) => boolean;
   }>
 ) {
+  const isNewOrWalkIn = (appointment: ReportingAppointment) =>
+    appointment.appointmentTypeLabel === "New Bride" ||
+    (appointment.visitType === "WALK_IN" && isBridesSeenType(appointment.appointmentTypeLabel));
+
+  const isScheduledComeback = (appointment: ReportingAppointment) =>
+    (appointment.appointmentTypeLabel === "Comeback Bride" ||
+      appointment.appointmentTypeLabel === "Comeback Bride - Same Day") &&
+    appointment.visitType === "APPOINTMENT";
+
   return categories
     .map((category) => {
       const matching = appointments.filter(category.matcher);
-      const metrics = {
-        bridesSeen: matching.filter((appointment) =>
-          filters.appointmentType === "Comeback Bride"
-            ? appointment.appointmentTypeLabel === "Comeback Bride"
-            : isBridesSeenType(appointment.appointmentTypeLabel)
-        ).length,
-        bridesSold: matching.filter((appointment) => {
-          if (filters.appointmentType === "Comeback Bride") {
-            return (
-              (appointment.appointmentTypeLabel === "Comeback Bride" ||
-                appointment.appointmentTypeLabel === "Comeback Bride - Same Day") &&
-              appointment.purchased === true
-            );
-          }
 
+      const newBridesSeen = filters.appointmentType === "Comeback Bride"
+        ? 0
+        : matching.filter(isNewOrWalkIn).length;
+
+      const comebackBridesSeen = matching.filter(
+        filters.appointmentType === "Comeback Bride"
+          ? (appointment) => appointment.appointmentTypeLabel === "Comeback Bride"
+          : isScheduledComeback
+      ).length;
+
+      const bridesSeen = newBridesSeen + comebackBridesSeen;
+
+      const bridesSold = matching.filter((appointment) => {
+        if (filters.appointmentType === "Comeback Bride") {
           return (
-            (appointment.appointmentTypeLabel === "New Bride" ||
-              appointment.appointmentTypeLabel === "Comeback Bride" ||
+            (appointment.appointmentTypeLabel === "Comeback Bride" ||
               appointment.appointmentTypeLabel === "Comeback Bride - Same Day") &&
             appointment.purchased === true
           );
-        }).length
-      };
+        }
+
+        return (
+          (appointment.appointmentTypeLabel === "New Bride" ||
+            appointment.appointmentTypeLabel === "Comeback Bride" ||
+            appointment.appointmentTypeLabel === "Comeback Bride - Same Day") &&
+          appointment.purchased === true
+        );
+      }).length;
 
       return {
         label: category.label,
-        ...metrics,
-        closeRate: getCloseRateValue(metrics.bridesSeen, metrics.bridesSold)
+        newBridesSeen,
+        comebackBridesSeen,
+        bridesSeen,
+        bridesSold,
+        closeRate: getCloseRateValue(bridesSeen, bridesSold)
       };
     })
     .filter((row) => row.bridesSeen || row.bridesSold);

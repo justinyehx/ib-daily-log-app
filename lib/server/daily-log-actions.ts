@@ -12,11 +12,18 @@ function asString(value: FormDataEntryValue | null) {
   return value.trim();
 }
 
-/** Resolves the DB store ID for the current session's store slug. Throws if not found. */
+/** Resolves the DB store ID for the current session's store slug. Throws if not found.
+ *  ADMIN users have access to all stores, so storeId is returned as null for them —
+ *  callers must skip per-store ownership checks when storeId is null. */
 async function requireSessionStore() {
   const session = await getCurrentSession();
   if (!session.isAuthenticated) {
     throw new Error("Authentication required.");
+  }
+  // ADMIN accounts may be associated with a virtual combined store that has no
+  // real DB row — skip the store lookup and return null to signal all-store access.
+  if (session.role === "ADMIN") {
+    return { session, storeId: null as string | null };
   }
   const store = await prisma.store.findUnique({
     where: { slug: session.storeSlug },
@@ -25,7 +32,7 @@ async function requireSessionStore() {
   if (!store) {
     throw new Error("Store not found.");
   }
-  return { session, storeId: store.id };
+  return { session, storeId: store.id as string | null };
 }
 
 function buildClientDateTime(baseDate: string, timeValue: string, offsetMinutesInput: string) {
@@ -168,7 +175,8 @@ export async function createDailyLogEntry(formData: FormData) {
   }
 
   // Verify the submitted store matches the session store (prevents cross-store writes).
-  if (storeId !== sessionStoreId) {
+  // ADMIN users (sessionStoreId === null) are allowed to write to any store.
+  if (sessionStoreId !== null && storeId !== sessionStoreId) {
     throw new Error("Not authorized to add entries for this store.");
   }
 
@@ -295,7 +303,8 @@ export async function updateDailyLogEntry(formData: FormData) {
   }
 
   // Verify the appointment belongs to the session's store.
-  if (existingAppointment.storeId !== sessionStoreId) {
+  // ADMIN users (sessionStoreId === null) may edit appointments in any store.
+  if (sessionStoreId !== null && existingAppointment.storeId !== sessionStoreId) {
     throw new Error("Not authorized to edit this appointment.");
   }
 
@@ -402,7 +411,8 @@ export async function deleteDailyLogEntry(formData: FormData) {
     throw new Error("Appointment could not be found.");
   }
 
-  if (appointment.storeId !== sessionStoreId) {
+  // ADMIN users (sessionStoreId === null) may delete appointments in any store.
+  if (sessionStoreId !== null && appointment.storeId !== sessionStoreId) {
     throw new Error("Not authorized to remove this appointment.");
   }
 

@@ -253,7 +253,7 @@ export function applyAppointmentFilters(
 }
 
 export function formatPercent(value: number) {
-  return `${Math.round(value * 100)}%`;
+  return `${(value * 100).toFixed(1)}%`;
 }
 
 export function formatTime(date: Date | null, timezone = "UTC") {

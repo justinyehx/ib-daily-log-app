@@ -20,12 +20,14 @@ function BreakdownTable({
   title,
   kicker,
   rows,
-  emptyMessage
+  emptyMessage,
+  showVisitTypeSplit = false
 }: {
   title: string;
   kicker: string;
-  rows: Array<{ label: string; bridesSeen: number; bridesSold: number; closeRate: number }>;
+  rows: Array<{ label: string; newBridesSeen: number; comebackBridesSeen: number; bridesSeen: number; bridesSold: number; closeRate: number }>;
   emptyMessage: string;
+  showVisitTypeSplit?: boolean;
 }) {
   return (
     <section className="panel stylist-breakdown-card">
@@ -41,7 +43,14 @@ function BreakdownTable({
             <thead>
               <tr>
                 <th>Category</th>
-                <th>Brides Seen</th>
+                {showVisitTypeSplit ? (
+                  <>
+                    <th>New Brides Seen</th>
+                    <th>Comeback Brides Seen</th>
+                  </>
+                ) : (
+                  <th>Brides Seen</th>
+                )}
                 <th>Brides Sold</th>
                 <th>Closing %</th>
               </tr>
@@ -50,7 +59,14 @@ function BreakdownTable({
               {rows.map((row) => (
                 <tr key={row.label}>
                   <td>{row.label}</td>
-                  <td>{row.bridesSeen}</td>
+                  {showVisitTypeSplit ? (
+                    <>
+                      <td>{row.newBridesSeen}</td>
+                      <td>{row.comebackBridesSeen}</td>
+                    </>
+                  ) : (
+                    <td>{row.bridesSeen}</td>
+                  )}
                   <td>{row.bridesSold}</td>
                   <td>{formatPercent(row.closeRate)}</td>
                 </tr>
@@ -180,8 +196,8 @@ export default async function StylistsPage({ params, searchParams }: StylistsPag
               </div>
               <div className="stylist-breakdown-grid">
                 <BreakdownTable kicker="Bridal Visit Type" title="Scheduled and walk-in bridal performance" rows={stylists.visitTypeBreakdown} emptyMessage="No bridal visit-type data in this reporting window." />
-                <BreakdownTable kicker="Price Point" title="Bridal close by price" rows={stylists.priceBreakdown} emptyMessage="No bridal price-point data in this reporting window." />
-                <BreakdownTable kicker="Size" title="Bridal close by size" rows={stylists.sizeBreakdown} emptyMessage="No bridal size data in this reporting window." />
+                <BreakdownTable kicker="Price Point" title="Bridal close by price" rows={stylists.priceBreakdown} emptyMessage="No bridal price-point data in this reporting window." showVisitTypeSplit />
+                <BreakdownTable kicker="Size" title="Bridal close by size" rows={stylists.sizeBreakdown} emptyMessage="No bridal size data in this reporting window." showVisitTypeSplit />
                 <section className="panel stylist-breakdown-card">
                   <div className="panel-head">
                     <div>
