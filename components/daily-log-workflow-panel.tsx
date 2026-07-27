@@ -14,6 +14,9 @@ import {
   skipsPurchasedField
 } from "@/lib/appointment-form-utils";
 
+/** Store pre-selected in the store picker when the combined view is active. */
+const DEFAULT_STORE_SLUG = "galleria";
+
 type Option = {
   id: string;
   label: string;
@@ -174,7 +177,12 @@ export function DailyLogWorkflowPanel({
   lookupStoreSlug,
   onCancelEdit
 }: DailyLogWorkflowPanelProps) {
-  const defaultStoreId = storeConfigs[0]?.storeId || storeId;
+  // Store configs arrive sorted by name, which puts "Curve by IB" first. Galleria is
+  // the busier store, so prefer it as the default when both are available.
+  const defaultStoreId =
+    storeConfigs.find((config) => config.slug === DEFAULT_STORE_SLUG)?.storeId ||
+    storeConfigs[0]?.storeId ||
+    storeId;
   const defaultAppointmentTypeId = useMemo(() => findDefaultTypeId(appointmentTypes), [appointmentTypes]);
   const defaultWalkInTypeId = useMemo(() => findDefaultTypeId(walkInTypes), [walkInTypes]);
   const [selectedStoreId, setSelectedStoreId] = useState(defaultStoreId);
