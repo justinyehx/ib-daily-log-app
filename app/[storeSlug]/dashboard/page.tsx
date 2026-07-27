@@ -15,6 +15,7 @@ import {
 } from "@/lib/server/dashboard-actions";
 import { safeTimezone, getTodayDateString } from "@/lib/tz-utils";
 import { formatStaffDisplayName } from "@/lib/staff-display";
+import { canViewStoreSlug } from "@/lib/store-views";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
 
   if (!session.isAuthenticated) redirect("/login");
   if (session.role === "STYLIST") redirect(`/${session.storeSlug}/stylists`);
-  if (session.role !== "ADMIN" && session.storeSlug !== storeSlug) {
+  if (session.role !== "ADMIN" && !canViewStoreSlug(session.storeSlug, storeSlug)) {
     redirect(`/${session.storeSlug}/dashboard`);
   }
 
@@ -154,7 +155,7 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
             ...staffMember,
             role: staffMember.role
           }))}
-          previousCustomerProfiles={dashboard.previousCustomerProfiles}
+          lookupStoreSlug={storeSlug}
         />
 
         <CurrentCustomersPanel

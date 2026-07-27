@@ -26,17 +26,17 @@ export function SettingsAccessForm({
       <input type="hidden" name="storeSlug" value={currentStoreSlug} />
 
       <label className="settings-field">
-        Role
+        Preview as
         <select
           defaultValue={currentRole}
           disabled={disabled}
           name="role"
           onChange={(event) => setRole(event.target.value as SettingsAccessFormProps["currentRole"])}
         >
-          <option value="USER">User</option>
-          <option value="STYLIST">Stylist</option>
+          <option value="ADMIN">Admin (your own role)</option>
           <option value="MANAGER">Manager</option>
-          <option value="ADMIN">Admin</option>
+          <option value="USER">User (front desk)</option>
+          <option value="STYLIST">Stylist</option>
         </select>
       </label>
 
@@ -54,14 +54,14 @@ export function SettingsAccessForm({
         </label>
       ) : null}
 
-      <label className="settings-field">
-        Password
-        <input disabled={disabled} name="password" placeholder="Enter role password" type="password" />
-      </label>
+      <p className="settings-copy">
+        Previewing shows the app exactly as that role sees it, including their restrictions. Your
+        account stays an admin — a banner at the top lets you exit preview at any time.
+      </p>
 
       <div className="settings-actions">
         <SubmitButton className="button" pendingLabel="Applying..." disabled={disabled}>
-          Apply role
+          {role === "ADMIN" ? "Exit preview" : "Start preview"}
         </SubmitButton>
       </div>
     </form>

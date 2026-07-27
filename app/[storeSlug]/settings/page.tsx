@@ -9,6 +9,7 @@ import { getCurrentSession } from "@/lib/auth";
 import { buildQuery } from "@/lib/query-utils";
 import { getSettingsData } from "@/lib/reporting-data";
 import { addSettingsItem, disableUserAccount, removeSettingsItem, updateStaffMemberRole } from "@/lib/server/settings-actions";
+import { canViewStoreSlug } from "@/lib/store-views";
 
 type SettingsPageProps = {
   params: Promise<{ storeSlug: string }>;
@@ -23,7 +24,7 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
   if (session.role === "USER" || session.role === "STYLIST") {
     redirect(`/${session.storeSlug}/${session.role === "STYLIST" ? "stylists" : "dashboard"}`);
   }
-  if (session.role !== "ADMIN" && session.storeSlug !== storeSlug) {
+  if (session.role !== "ADMIN" && !canViewStoreSlug(session.storeSlug, storeSlug)) {
     redirect(`/${session.storeSlug}/settings`);
   }
 

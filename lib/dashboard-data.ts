@@ -95,7 +95,7 @@ export async function getDashboardData(storeSlug: string, timezone = "UTC") {
     const twelveMonthsAgo = new Date(today);
     twelveMonthsAgo.setFullYear(twelveMonthsAgo.getFullYear() - 1);
 
-    const [todaysAppointments, activeAppointments, latestCustomerAppointments, purchasedCustomers, stores] = await Promise.all([
+    const [todaysAppointments, activeAppointments, leadSourceHistory, stores] = await Promise.all([
       // Today's appointments — drives the log table, summary stats, and appointment mix.
       prisma.appointment.findMany({
         where: {
@@ -176,47 +176,22 @@ export async function getDashboardData(storeSlug: string, timezone = "UTC") {
         orderBy: [{ status: "asc" }, { timeIn: "asc" }]
       }),
 
-      // Latest appointment per customer (12 months) — drives the previous-customer
-      // lookup and lead-source frequency sort. Replaces a separate leadSourceHistory
-      // query since both needed the same fields.
-      prisma.appointment.findMany({
-        where: {
-          storeId: { in: shell.storeIds },
-          deletedAt: null,
-          appointmentDate: { gte: twelveMonthsAgo }
-        },
-        distinct: ["customerId"],
-        select: {
-          id: true,
-          customerId: true,
-          storeId: true,
-          appointmentDate: true,
-          appointmentTypeLabel: true,
-          visitType: true,
-          comments: true,
-          leadSourceLabel: true,
-          pricePointLabel: true,
-          sizeLabel: true,
-          purchased: true,
-          otherPurchase: true,
-          wearDate: true,
-          customer: { select: { fullName: true, normalizedFullName: true } },
-          assignedStaffMember: { select: { fullName: true } },
-          location: { select: { name: true } }
-        },
-        orderBy: [{ customerId: "asc" }, { appointmentDate: "desc" }, { timeIn: "desc" }]
-      }),
-
-      // Distinct customer IDs that have ever purchased — used to flag returning buyers.
+      // Lead-source history (12 months) — only used to sort the lead-source
+      // dropdown by how often each source was used. Previously this also carried
+      // the full previous-customer payload with customer/staff/location joins;
+      // that moved to an on-demand search, so only three columns are needed now.
       prisma.appointment.findMany({
         where: {
           storeId: { in: shell.storeIds },
           deletedAt: null,
           appointmentDate: { gte: twelveMonthsAgo },
-          purchased: true
+          leadSourceLabel: { not: null }
         },
-        distinct: ["customerId"],
-        select: { customerId: true }
+        select: {
+          storeId: true,
+          appointmentDate: true,
+          leadSourceLabel: true
+        }
       }),
 
       // All store choices for the store switcher — fetched in parallel instead of
@@ -256,7 +231,7 @@ export async function getDashboardData(storeSlug: string, timezone = "UTC") {
         )
       : 0;
 
-    // latestCustomerAppointments doubles as the lead-source history source —
+    // Lead-source frequency drives the ordering of the lead-source dropdown.
     // same fields needed, one less query.
     const storeConfigs = shell.sourceStores.map((sourceStore) => ({
       storeId: sourceStore.id,
@@ -290,7 +265,7 @@ export async function getDashboardData(storeSlug: string, timezone = "UTC") {
       ...config,
       leadSources: sortOptionsByYearFrequency(
         config.leadSources,
-        latestCustomerAppointments.filter((a) => a.storeId === config.storeId)
+        leadSourceHistory.filter((a) => a.storeId === config.storeId)
       )
     }));
 
@@ -305,7 +280,7 @@ export async function getDashboardData(storeSlug: string, timezone = "UTC") {
       ).map(({ id, fullName, role }) => ({ id, fullName, role })),
       leadSources: sortOptionsByYearFrequency(
         dedupeByLabel(storeConfigs.flatMap((c) => c.leadSources)),
-        latestCustomerAppointments
+        leadSourceHistory
       ),
       pricePoints: dedupeByLabel(storeConfigs.flatMap((c) => c.pricePoints)),
       sizes: dedupeByLabel(storeConfigs.flatMap((c) => c.sizes)),
@@ -325,29 +300,9 @@ export async function getDashboardData(storeSlug: string, timezone = "UTC") {
       .sort((a, b) => b[1] - a[1])
       .map(([label, value]) => ({ label, value }));
 
-    const purchasedCustomerIds = new Set(purchasedCustomers.map((a) => a.customerId));
-    const previousCustomerProfiles = latestCustomerAppointments
-      .filter((a) => a.customer.normalizedFullName)
-      .map((a) => ({
-        id: a.id,
-        guestName: a.customer.fullName,
-        normalizedGuestName: a.customer.normalizedFullName,
-        lastVisitDate: a.appointmentDate.toISOString().slice(0, 10),
-        appointmentType: a.appointmentTypeLabel,
-        visitType: (a.visitType === VisitType.WALK_IN ? "Walk-in" : "Appointment") as "Appointment" | "Walk-in",
-        assignedTo: a.assignedStaffMember?.fullName || "",
-        location: a.location?.name || "",
-        wearDate: a.wearDate ? a.wearDate.toISOString().slice(0, 10) : "",
-        heardAbout: a.leadSourceLabel || "",
-        pricePoint: a.pricePointLabel || "",
-        size: a.sizeLabel || "",
-        purchased: a.purchased === null ? "" : a.purchased ? "Yes" : "No",
-        otherSale: a.otherPurchase === null ? "" : a.otherPurchase ? "Yes" : "No",
-        comments: a.comments || "",
-        hasPreviousPurchase: purchasedCustomerIds.has(a.customerId),
-        storeId: a.storeId,
-        storeName: storeName(a.storeId)
-      }));
+    // Previous-customer profiles are searched on demand by the check-in form
+    // (see searchPreviousCustomers) rather than preloaded into the page.
+    const previousCustomerProfiles: never[] = [];
 
     // For comeback customers on the floor, look up their original visit in parallel.
     const comebackCustomerIds = currentCustomers

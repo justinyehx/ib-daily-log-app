@@ -8,6 +8,7 @@ import { getCurrentSession } from "@/lib/auth";
 import { getDailyLogData } from "@/lib/daily-log-data";
 import { createDailyLogEntry, deleteDailyLogEntry, updateDailyLogEntry } from "@/lib/server/daily-log-actions";
 import { formatStaffDisplayName } from "@/lib/staff-display";
+import { canViewStoreSlug } from "@/lib/store-views";
 import { getTodayDateString, safeTimezone } from "@/lib/tz-utils";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ export default async function DailyLogPage({ params, searchParams }: DailyLogPag
 
   if (!session.isAuthenticated) redirect("/login");
   if (session.role === "STYLIST") redirect(`/${session.storeSlug}/stylists`);
-  if (session.role !== "ADMIN" && session.storeSlug !== storeSlug) {
+  if (session.role !== "ADMIN" && !canViewStoreSlug(session.storeSlug, storeSlug)) {
     redirect(`/${session.storeSlug}/daily-log`);
   }
 
@@ -92,8 +93,19 @@ export default async function DailyLogPage({ params, searchParams }: DailyLogPag
 
         <DailyLogTableSection
           rows={dailyLog.rows}
-          workflowOptions={dailyLog.workflowOptions}
-          previousCustomerProfiles={dailyLog.previousCustomerProfiles}
+          workflowOptions={
+            // Non-admin users in the combined view can only create appointments
+            // for their own store — filter storeConfigs to prevent cross-store writes.
+            session.role !== "ADMIN" && dailyLog.workflowOptions.isVirtualStore
+              ? {
+                  ...dailyLog.workflowOptions,
+                  storeConfigs: dailyLog.workflowOptions.storeConfigs.filter(
+                    (c) => c.slug === session.storeSlug
+                  )
+                }
+              : dailyLog.workflowOptions
+          }
+          storeSlug={storeSlug}
           createAction={createDailyLogEntry}
           updateAction={updateDailyLogEntry}
           deleteAction={deleteDailyLogEntry}

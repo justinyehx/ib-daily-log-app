@@ -329,7 +329,7 @@ export async function getDailyLogData(
 
   const needsDateDefault = !hasMeaningfulReportingSearchParams(searchParams);
 
-  const [todaysSummary, latestAppointmentResult, leadSourceHistory, latestCustomerAppointments, purchasedCustomers] = await Promise.all([
+  const [todaysSummary, latestAppointmentResult, leadSourceHistory] = await Promise.all([
     prisma.appointment.findMany({
       where: {
         storeId: {
@@ -373,75 +373,18 @@ export async function getDailyLogData(
         appointmentDate: true,
         leadSourceLabel: true
       }
-    }),
-    prisma.appointment.findMany({
-      where: {
-        storeId: {
-          in: shell.storeIds
-        },
-        deletedAt: null,
-        appointmentDate: {
-          gte: twelveMonthsAgo
-        }
-      },
-      distinct: ["customerId"],
-      select: {
-        id: true,
-        customerId: true,
-        storeId: true,
-        appointmentDate: true,
-        appointmentTypeLabel: true,
-        visitType: true,
-        comments: true,
-        leadSourceLabel: true,
-        pricePointLabel: true,
-        sizeLabel: true,
-        purchased: true,
-        otherPurchase: true,
-        wearDate: true,
-        customer: {
-          select: {
-            fullName: true,
-            normalizedFullName: true
-          }
-        },
-        assignedStaffMember: {
-          select: {
-            fullName: true
-          }
-        },
-        location: {
-          select: {
-            name: true
-          }
-        }
-      },
-      orderBy: [{ customerId: "asc" }, { appointmentDate: "desc" }, { timeIn: "desc" }]
-    }),
-    prisma.appointment.findMany({
-      where: {
-        storeId: {
-          in: shell.storeIds
-        },
-        deletedAt: null,
-        appointmentDate: {
-          gte: twelveMonthsAgo
-        },
-        purchased: true
-      },
-      distinct: ["customerId"],
-      select: {
-        customerId: true
-      }
     })
   ]);
 
+  // With no filters chosen, land on the most recent day that actually has entries.
+  // (This previously defaulted to the whole year, which rendered thousands of rows
+  // on every visit and was the main cause of slow page loads.)
   let effectiveSearchParams = searchParams;
   if (needsDateDefault && latestAppointmentResult) {
     effectiveSearchParams = {
       ...(searchParams || {}),
-      view: "year",
-      year: String(latestAppointmentResult.appointmentDate.getFullYear())
+      view: "day",
+      day: latestAppointmentResult.appointmentDate.toISOString().slice(0, 10)
     };
   }
 
@@ -498,8 +441,6 @@ export async function getDailyLogData(
   const customerCount = new Set(
     appointments.map((appointment) => appointment.customer.normalizedFullName).filter(Boolean)
   ).size;
-
-  const purchasedCustomerIds = new Set(purchasedCustomers.map((appointment) => appointment.customerId));
 
     return {
       store: {
@@ -614,11 +555,9 @@ export async function getDailyLogData(
         )
       ).map(({ id, name }) => ({ id, name }))
     },
-      previousCustomerProfiles: buildPreviousCustomerProfiles(
-        latestCustomerAppointments,
-        purchasedCustomerIds,
-        storeNamesById
-      ),
+      // Previous-customer profiles are no longer preloaded — the check-in form
+      // searches them on demand via searchPreviousCustomers().
+      previousCustomerProfiles: [] as ReturnType<typeof buildPreviousCustomerProfiles>,
       searchRows: searchAppointments
         .map((appointment) => ({
         id: appointment.id,
@@ -645,6 +584,7 @@ export async function getDailyLogData(
         })),
       rows: appointments.map((appointment) => ({
       id: appointment.id,
+      storeId: appointment.storeId,
       storeName: storeNamesById.get(appointment.storeId) || store.name,
       appointmentDateRaw: appointment.appointmentDate.toISOString().slice(0, 10),
       date: formatDate(appointment.appointmentDate),

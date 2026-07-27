@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { StylistTimelineChart } from "@/components/stylist-timeline-chart";
 import { getCurrentSession } from "@/lib/auth";
 import { getTimelineData } from "@/lib/timeline-data";
+import { canViewStoreSlug } from "@/lib/store-views";
 import { getTodayDateString, safeTimezone } from "@/lib/tz-utils";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export default async function TimelinePage({ params, searchParams }: TimelinePag
   if (session.role !== "MANAGER" && session.role !== "ADMIN") {
     redirect(`/${session.storeSlug}/dashboard`);
   }
-  if (session.role !== "ADMIN" && session.storeSlug !== storeSlug) {
+  if (session.role !== "ADMIN" && !canViewStoreSlug(session.storeSlug, storeSlug)) {
     redirect(`/${session.storeSlug}/analytics/timeline`);
   }
 

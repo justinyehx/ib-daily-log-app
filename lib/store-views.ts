@@ -118,6 +118,26 @@ export function isCombinedStoreSlug(storeSlug: string) {
   return storeSlug === COMBINED_STORE_SLUG;
 }
 
+/**
+ * Returns true if a user whose home store is `sessionStoreSlug` is permitted
+ * to view the page at `requestedStoreSlug`.
+ *
+ * Rules:
+ *  - Any user can view their own store.
+ *  - Galleria and Curve users can also view the combined "galleria-curve" store.
+ *    ADMIN bypasses this check entirely (handled at the page level).
+ */
+export function canViewStoreSlug(sessionStoreSlug: string, requestedStoreSlug: string): boolean {
+  if (sessionStoreSlug === requestedStoreSlug) return true;
+  if (
+    requestedStoreSlug === COMBINED_STORE_SLUG &&
+    (COMBINED_SOURCE_SLUGS as readonly string[]).includes(sessionStoreSlug)
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export const getAllStoreChoices = cache(async function getAllStoreChoices() {
   const stores = await prisma.store.findMany({
     where: { isActive: true },

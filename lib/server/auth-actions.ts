@@ -43,6 +43,9 @@ export async function signInDemo(formData: FormData) {
   cookieStore.set("ib-demo-role", user.role);
   cookieStore.set("ib-demo-store", userStoreSlug);
   cookieStore.set("ib-demo-stylist", user.role === "STYLIST" ? user.staffMember?.fullName || user.fullName : "");
+  // Never inherit a role preview left behind by a previous session on this browser.
+  cookieStore.delete("ib-demo-preview-role");
+  cookieStore.delete("ib-demo-preview-stylist");
 
   revalidateAll();
   redirect(user.role === "STYLIST" ? `/${userStoreSlug}/stylists` : `/${userStoreSlug}/dashboard`);
@@ -55,6 +58,8 @@ export async function signOutDemo() {
   cookieStore.delete("ib-demo-role");
   cookieStore.delete("ib-demo-store");
   cookieStore.delete("ib-demo-stylist");
+  cookieStore.delete("ib-demo-preview-role");
+  cookieStore.delete("ib-demo-preview-stylist");
 
   revalidateAll();
   redirect("/login");

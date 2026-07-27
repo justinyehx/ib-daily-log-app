@@ -71,6 +71,69 @@ textarea:disabled {
   min-height: 100vh;
 }
 
+/* ── Daily log table pager ── */
+.table-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 4px 0;
+}
+
+.table-pager-status,
+.table-pager-page {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.table-pager-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.table-pager-controls .button {
+  padding: 4px 12px;
+  font-size: 0.82rem;
+}
+
+.table-pager-controls .button:disabled {
+  opacity: 0.4;
+}
+
+/* ── Role preview banner ──
+   Spans the full shell width above the sidebar and content. Sticky so the
+   exit control stays reachable no matter how far the page is scrolled. */
+.preview-banner {
+  grid-column: 1 / -1;
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 10px 20px;
+  background: #7a4522;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.preview-banner-text strong {
+  font-weight: 700;
+}
+
+.preview-banner-button {
+  padding: 4px 14px;
+  font-size: 0.82rem;
+  background: #fff;
+  border-color: #fff;
+  color: #7a4522;
+}
+
 .sidebar {
   position: sticky;
   top: 0;

@@ -9,6 +9,7 @@ import { formatMinutes, formatPercent } from "@/lib/reporting";
 import { formatStaffDisplayName } from "@/lib/staff-display";
 import { getStylistsData } from "@/lib/reporting-data";
 import { buildQuery } from "@/lib/query-utils";
+import { canViewStoreSlug } from "@/lib/store-views";
 import { safeTimezone } from "@/lib/tz-utils";
 
 type StylistsPageProps = {
@@ -88,7 +89,7 @@ export default async function StylistsPage({ params, searchParams }: StylistsPag
 
   if (!session.isAuthenticated) redirect("/login");
   if (session.role === "USER") redirect(`/${session.storeSlug}/dashboard`);
-  if (session.role !== "ADMIN" && session.storeSlug !== storeSlug) {
+  if (session.role !== "ADMIN" && !canViewStoreSlug(session.storeSlug, storeSlug)) {
     redirect(`/${session.storeSlug}/stylists`);
   }
 

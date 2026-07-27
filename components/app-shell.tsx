@@ -7,6 +7,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { TimezoneSync } from "@/components/timezone-sync";
 import type { CurrentSession } from "@/lib/auth";
 import { signOutDemo } from "@/lib/server/auth-actions";
+import { exitRolePreview } from "@/lib/server/settings-actions";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,8 +52,24 @@ const ROLE_LABELS: Record<CurrentSession["role"], string> = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+// Slugs whose users can switch to the combined store view.
+const COMBINED_STORE_SLUG = "galleria-curve";
+const COMBINED_SOURCE_SLUGS = ["galleria", "curve"];
+
 export function AppShell({ activeView, storeSlug, storeName, session, snapshot, stores = [], children }: AppShellProps) {
   const [navOpen, setNavOpen] = useState(false);
+
+  // Determine which stores this user can switch between.
+  // ADMIN sees all stores. Galleria/Curve users see their own store + the combined view.
+  // All other roles stay locked to their assigned store.
+  const switchableStores =
+    session.role === "ADMIN"
+      ? stores
+      : COMBINED_SOURCE_SLUGS.includes(session.storeSlug)
+        ? stores.filter(
+            (s) => s.slug === session.storeSlug || s.slug === COMBINED_STORE_SLUG
+          )
+        : [];
 
   const navItems = buildNavItems(storeSlug);
   const visibleNavItems = navItems.filter((item) => {
@@ -75,6 +92,23 @@ export function AppShell({ activeView, storeSlug, storeName, session, snapshot, 
 
   return (
     <div className="shell">
+      {/* ── Role preview banner ──
+          Always rendered while previewing so an admin can exit from any page,
+          including ones the previewed role would normally redirect them away from. */}
+      {session.isPreviewing ? (
+        <div className="preview-banner" role="status">
+          <span className="preview-banner-text">
+            Previewing as <strong>{ROLE_LABELS[session.role]}</strong>
+            {session.role === "STYLIST" && session.fullName ? ` — ${session.fullName}` : ""}
+          </span>
+          <form action={exitRolePreview}>
+            <SubmitButton className="button secondary preview-banner-button" pendingLabel="Exiting...">
+              Exit preview
+            </SubmitButton>
+          </form>
+        </div>
+      ) : null}
+
       {/* ── Mobile top bar ── */}
       <header className="mobile-topbar">
         <div className="mobile-topbar-brand">
@@ -131,9 +165,9 @@ export function AppShell({ activeView, storeSlug, storeName, session, snapshot, 
           <div className="store-switcher">
             <p className="sidebar-label">Store View</p>
             <div className="store-switcher-row">
-              {session.role === "ADMIN" && stores.length ? (
+              {switchableStores.length > 1 ? (
                 <div className="store-switcher-links">
-                  {stores.map((store) => (
+                  {switchableStores.map((store) => (
                     <Link
                       key={store.slug}
                       href={`/${store.slug}/dashboard`}
@@ -148,11 +182,11 @@ export function AppShell({ activeView, storeSlug, storeName, session, snapshot, 
                 <>
                   <strong className="sidebar-store-name">{storeName}</strong>
                   <span className="sidebar-store-note">
-                    {session.role === "MANAGER"
-                      ? "Manager access stays locked to this store."
-                      : session.role === "STYLIST"
-                        ? "Stylist reporting follows this store assignment."
-                        : "Front desk access is using this store view."}
+                    {session.role === "STYLIST"
+                      ? "Stylist reporting follows this store assignment."
+                      : session.role === "USER"
+                        ? "Front desk access is using this store view."
+                        : "Store view is locked to your assigned location."}
                   </span>
                 </>
               )}

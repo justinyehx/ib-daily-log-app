@@ -4,6 +4,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { PreviousCustomerLookup, type CustomerProfile } from "@/components/previous-customer-lookup";
 import { SubmitButton } from "@/components/submit-button";
+import { searchPreviousCustomers } from "@/lib/server/customer-lookup-actions";
 import {
   findDefaultTypeId,
   formatDateLabel,
@@ -44,6 +45,7 @@ type StoreConfig = {
 
 type DailyLogEditableRow = {
   id: string;
+  storeId: string;
   appointmentDateRaw: string;
   guestName: string;
   visitTypeRaw: string;
@@ -78,7 +80,8 @@ type DailyLogWorkflowPanelProps = {
   locations: LocationOption[];
   rows: DailyLogEditableRow[];
   initialEditId?: string;
-  previousCustomerProfiles: CustomerProfile[];
+  /** Store view slug used to scope the previous-customer search. */
+  lookupStoreSlug: string;
   isVirtualStore?: boolean;
   storeConfigs?: StoreConfig[];
   /** Called when the user clicks "Cancel edit" or removes an entry, so a parent can clear its selected-row state. */
@@ -168,7 +171,7 @@ export function DailyLogWorkflowPanel({
   locations,
   rows,
   initialEditId,
-  previousCustomerProfiles,
+  lookupStoreSlug,
   onCancelEdit
 }: DailyLogWorkflowPanelProps) {
   const defaultStoreId = storeConfigs[0]?.storeId || storeId;
@@ -208,25 +211,46 @@ export function DailyLogWorkflowPanel({
   );
 
   const rowMap = useMemo(() => new Map(rows.map((row) => [row.id, row])), [rows]);
-  const matches = useMemo(() => {
-    if (isEditing || deferredQuery.length < 2) return [];
 
-    return previousCustomerProfiles
-      .filter(
-        (profile) =>
-          profile.normalizedGuestName.includes(deferredQuery) ||
-          profile.guestName.toLowerCase().includes(deferredQuery)
-      )
-      .slice(0, 5);
-  }, [deferredQuery, isEditing, previousCustomerProfiles]);
+  // Previous-customer matches are fetched on demand rather than filtered from a
+  // preloaded list, which keeps thousands of profiles out of the page payload.
+  const [matches, setMatches] = useState<CustomerProfile[]>([]);
+
+  useEffect(() => {
+    if (isEditing || deferredQuery.length < 2) {
+      setMatches([]);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      searchPreviousCustomers(lookupStoreSlug, deferredQuery)
+        .then((results) => {
+          if (!cancelled) setMatches(results);
+        })
+        .catch(() => {
+          if (!cancelled) setMatches([]);
+        });
+    }, 200);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [deferredQuery, isEditing, lookupStoreSlug]);
 
   useEffect(() => {
     if (!initialEditId) return;
     const row = rowMap.get(initialEditId);
     if (!row) return;
     setTimeTouched(true);
+    // In the combined store view, switch to the appointment's actual store so
+    // the correct option lists (type, stylist, price point, etc.) are shown.
+    if (isVirtualStore && row.storeId) {
+      setSelectedStoreId(row.storeId);
+    }
     setFormState(fromRow(row));
-  }, [initialEditId, rowMap]);
+  }, [initialEditId, rowMap, isVirtualStore]);
 
   useEffect(() => {
     if (isEditing || timeTouched) return;
@@ -286,7 +310,7 @@ export function DailyLogWorkflowPanel({
     onCancelEdit?.();
   }
 
-  function applyPreviousCustomer(profile: DailyLogWorkflowPanelProps["previousCustomerProfiles"][number]) {
+  function applyPreviousCustomer(profile: CustomerProfile) {
     const inferredLeadSource = profile.hasPreviousPurchase ? "previous purchase" : "comeback";
     const matchingStoreConfig =
       (profile.storeId ? storeConfigs.find((entry) => entry.storeId === profile.storeId) : null) || activeStoreConfig;

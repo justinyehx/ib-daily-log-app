@@ -4,6 +4,7 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 
 import { PreviousCustomerLookup, type CustomerProfile } from "@/components/previous-customer-lookup";
 import { SubmitButton } from "@/components/submit-button";
+import { searchPreviousCustomers } from "@/lib/server/customer-lookup-actions";
 import {
   findDefaultTypeId,
   formatDateLabel,
@@ -52,7 +53,8 @@ type DashboardCheckInPanelProps = {
   sizes: Option[];
   locations: Option[];
   staffMembers: StaffOption[];
-  previousCustomerProfiles: CustomerProfile[];
+  /** Store view slug used to scope the previous-customer search. */
+  lookupStoreSlug: string;
 };
 
 export function DashboardCheckInPanel({
@@ -69,7 +71,7 @@ export function DashboardCheckInPanel({
   sizes,
   locations,
   staffMembers,
-  previousCustomerProfiles
+  lookupStoreSlug
 }: DashboardCheckInPanelProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const defaultStoreId = storeConfigs[0]?.storeId || storeId;
@@ -117,17 +119,31 @@ export function DashboardCheckInPanel({
   );
   const deferredQuery = deferredGuestName.trim().toLowerCase();
 
-  const matches = useMemo(() => {
-    if (deferredQuery.length < 2) return [];
+  // Fetched on demand so the dashboard doesn't ship every customer profile.
+  const [matches, setMatches] = useState<CustomerProfile[]>([]);
 
-    return previousCustomerProfiles
-      .filter(
-        (profile) =>
-          profile.normalizedGuestName.includes(deferredQuery) ||
-          profile.guestName.toLowerCase().includes(deferredQuery)
-      )
-      .slice(0, 5);
-  }, [deferredQuery, previousCustomerProfiles]);
+  useEffect(() => {
+    if (deferredQuery.length < 2) {
+      setMatches([]);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      searchPreviousCustomers(lookupStoreSlug, deferredQuery)
+        .then((results) => {
+          if (!cancelled) setMatches(results);
+        })
+        .catch(() => {
+          if (!cancelled) setMatches([]);
+        });
+    }, 200);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [deferredQuery, lookupStoreSlug]);
 
   useEffect(() => {
     if (timeTouched) return;

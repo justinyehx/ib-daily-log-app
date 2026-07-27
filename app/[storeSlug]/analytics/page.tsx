@@ -9,6 +9,7 @@ import { formatMinutes, formatPercent } from "@/lib/reporting";
 import { formatStaffDisplayName } from "@/lib/staff-display";
 import { getAnalyticsData } from "@/lib/reporting-data";
 import { buildQuery } from "@/lib/query-utils";
+import { canViewStoreSlug } from "@/lib/store-views";
 import { safeTimezone } from "@/lib/tz-utils";
 
 type AnalyticsPageProps = {
@@ -90,7 +91,7 @@ export default async function AnalyticsPage({ params, searchParams }: AnalyticsP
   if (session.role === "USER" || session.role === "STYLIST") {
     redirect(`/${session.storeSlug}/${session.role === "STYLIST" ? "stylists" : "dashboard"}`);
   }
-  if (session.role !== "ADMIN" && session.storeSlug !== storeSlug) {
+  if (session.role !== "ADMIN" && !canViewStoreSlug(session.storeSlug, storeSlug)) {
     redirect(`/${session.storeSlug}/analytics`);
   }
 

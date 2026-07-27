@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { getCurrentSession } from "@/lib/auth";
 import { hashPassword } from "@/lib/passwords";
 import { prisma } from "@/lib/prisma";
 import { normalizeName } from "@/lib/strings";
@@ -14,27 +15,26 @@ function asString(value: FormDataEntryValue | null) {
   return value.trim();
 }
 
+/** Admin gate based on the real session (DB role for signed-in accounts), NOT the
+ *  raw `ib-demo-role` cookie. The cookie is mutated by the role-preview switcher,
+ *  so reading it here previously let an admin revoke their own access — including
+ *  the ability to switch back. */
 async function requireAdminCookie() {
-  const cookieStore = await cookies();
-  const isAuthenticated = cookieStore.get("ib-demo-auth")?.value === "true";
-  const role = cookieStore.get("ib-demo-role")?.value;
+  const session = await getCurrentSession();
 
-  if (!isAuthenticated || role !== "ADMIN") {
+  if (!session.isAuthenticated || session.role !== "ADMIN") {
     throw new Error("Admin access is required.");
   }
 }
 
 async function getAuthenticatedRole() {
-  const cookieStore = await cookies();
-  const isAuthenticated = cookieStore.get("ib-demo-auth")?.value === "true";
-  const role = cookieStore.get("ib-demo-role")?.value;
-  const storeSlug = cookieStore.get("ib-demo-store")?.value || "";
+  const session = await getCurrentSession();
 
-  if (!isAuthenticated || !role) {
+  if (!session.isAuthenticated) {
     throw new Error("Sign in is required.");
   }
 
-  return { role, storeSlug };
+  return { role: session.role as string, storeSlug: session.storeSlug };
 }
 
 function revalidateSettingsAndLogin() {
@@ -287,10 +287,27 @@ export async function disableUserAccount(formData: FormData) {
   revalidateSettingsAndLogin();
 }
 
+/** Gate for entering/leaving role preview. Checks the account's REAL role, so an admin
+ *  previewing as User can still switch roles or exit — otherwise previewing as a lower
+ *  role would trap them with no way back. */
+async function requireTrueAdmin() {
+  const session = await getCurrentSession();
+
+  if (!session.isAuthenticated || session.trueRole !== "ADMIN") {
+    throw new Error("Admin access is required.");
+  }
+}
+
+/**
+ * Starts (or changes) a role preview for an admin. Preview is stored in its own
+ * cookie so it never overwrites the account's real role — the previous behaviour
+ * clobbered `ib-demo-role`, which both locked the admin out and had no effect on
+ * signed-in accounts, since the session reads the role from the database.
+ */
 export async function applyAccessSettings(formData: FormData) {
-  await requireAdminCookie();
+  await requireTrueAdmin();
+
   const role = asString(formData.get("role")).toUpperCase();
-  const password = asString(formData.get("password"));
   const stylistName = asString(formData.get("stylistName"));
   const storeSlug = asString(formData.get("storeSlug"));
 
@@ -298,55 +315,72 @@ export async function applyAccessSettings(formData: FormData) {
   const normalizedRole =
     role === "USER" || role === "STYLIST" || role === "MANAGER" || role === "ADMIN" ? role : "USER";
 
-  if (normalizedRole === "USER") {
-    cookieStore.set("ib-demo-role", "USER");
-    cookieStore.set("ib-demo-stylist", "");
-    revalidatePath("/", "layout");
-    return;
-  }
-
-  if (normalizedRole === "STYLIST") {
-    if (password !== "stylist123") {
-      throw new Error("Stylist password is incorrect.");
-    }
-    if (!stylistName) {
-      throw new Error("Select a stylist.");
-    }
-    cookieStore.set("ib-demo-role", "STYLIST");
-    cookieStore.set("ib-demo-stylist", stylistName);
-    revalidatePath("/", "layout");
-    return;
-  }
-
-  if (normalizedRole === "MANAGER") {
-    if (password !== "manager123") {
-      throw new Error("Manager password is incorrect.");
-    }
-    cookieStore.set("ib-demo-role", "MANAGER");
-    cookieStore.set("ib-demo-stylist", "");
-    revalidatePath("/", "layout");
-    return;
-  }
-
-  if (password !== "admin123") {
-    throw new Error("Admin password is incorrect.");
-  }
-
-  cookieStore.set("ib-demo-role", "ADMIN");
-  cookieStore.set("ib-demo-stylist", "");
   if (storeSlug) {
     cookieStore.set("ib-demo-store", storeSlug);
   }
+
+  // Selecting ADMIN means "stop previewing".
+  if (normalizedRole === "ADMIN") {
+    cookieStore.delete("ib-demo-preview-role");
+    cookieStore.delete("ib-demo-preview-stylist");
+    revalidatePath("/", "layout");
+    return;
+  }
+
+  if (normalizedRole === "STYLIST" && !stylistName) {
+    throw new Error("Select a stylist to preview.");
+  }
+
+  cookieStore.set("ib-demo-preview-role", normalizedRole);
+  cookieStore.set("ib-demo-preview-stylist", normalizedRole === "STYLIST" ? stylistName : "");
+
   revalidatePath("/", "layout");
+
+  // Land on a page the previewed role can actually access — settings would bounce
+  // a USER/STYLIST preview straight back out.
+  const target = storeSlug || cookieStore.get("ib-demo-store")?.value || "";
+  if (!target) {
+    return;
+  }
+  redirect(normalizedRole === "STYLIST" ? `/${target}/stylists` : `/${target}/dashboard`);
+}
+
+/** Ends an active role preview and returns the admin to their own role. */
+export async function exitRolePreview() {
+  await requireTrueAdmin();
+
+  const cookieStore = await cookies();
+  cookieStore.delete("ib-demo-preview-role");
+  cookieStore.delete("ib-demo-preview-stylist");
+
+  const storeSlug = cookieStore.get("ib-demo-store")?.value || "";
+  revalidatePath("/", "layout");
+  redirect(storeSlug ? `/${storeSlug}/settings` : "/dashboard");
 }
 
 export async function updateStaffMemberRole(formData: FormData) {
+  const session = await getCurrentSession();
+  if (!session.isAuthenticated || (session.role !== "ADMIN" && session.role !== "MANAGER")) {
+    throw new Error("Manager or admin access is required.");
+  }
+
   const itemId = asString(formData.get("itemId"));
   const roleInput = asString(formData.get("role")).toUpperCase();
   const validRoles = ["STYLIST", "SEAMSTRESS", "FRONT_DESK", "MANAGER"];
 
   if (!itemId || !validRoles.includes(roleInput)) {
     throw new Error("Staff member and a valid role are required.");
+  }
+
+  // Managers may only edit staff in their own store; admins may edit any.
+  if (session.role !== "ADMIN") {
+    const staff = await prisma.staffMember.findUnique({
+      where: { id: itemId },
+      select: { store: { select: { slug: true } } }
+    });
+    if (!staff || staff.store.slug !== session.storeSlug) {
+      throw new Error("Not authorized to edit this staff member.");
+    }
   }
 
   await prisma.staffMember.update({
