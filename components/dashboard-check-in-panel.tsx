@@ -173,7 +173,17 @@ export function DashboardCheckInPanel({
     setSizeOptionId("");
   }, [hideBridalDetailFields]);
 
+  // Clearing the dependent fields is only correct when the user actually switches
+  // store or visit type. The option arrays are new references on every server
+  // refresh, so without this guard a background refresh would wipe a partly
+  // filled check-in every 15 seconds.
+  const storeVisitKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
+    const key = `${selectedStoreId}|${visitType}`;
+    if (storeVisitKeyRef.current === key) return;
+    storeVisitKeyRef.current = key;
+
     setAppointmentTypeOptionId(
       visitType === "WALK_IN"
         ? findDefaultTypeId(activeWalkInTypes)

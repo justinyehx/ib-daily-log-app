@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
+import { AutoRefresh } from "@/components/auto-refresh";
 import { DailyLogTableSection } from "@/components/daily-log-table-section";
 import { ReportFiltersForm } from "@/components/report-filters-form";
 import { getCurrentSession } from "@/lib/auth";
@@ -55,6 +56,9 @@ export default async function DailyLogPage({ params, searchParams }: DailyLogPag
       stores={dailyLog.stores}
     >
       <div className="page-stack">
+        {/* Keeps this page current when a colleague checks someone in elsewhere. */}
+        <AutoRefresh />
+
         <div className="topbar-date">
           <div className="eyebrow">Daily Log</div>
           <h2 className="page-title">View entries</h2>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 
 import { PreviousCustomerLookup, type CustomerProfile } from "@/components/previous-customer-lookup";
 import { SubmitButton } from "@/components/submit-button";
@@ -247,10 +247,23 @@ export function DailyLogWorkflowPanel({
     };
   }, [deferredQuery, isEditing, lookupStoreSlug]);
 
+  // Tracks which row has already been loaded into the form. Without this, the
+  // effect below re-runs every time `rows` changes — including on each 15s
+  // auto-refresh — and would overwrite whatever the user was mid-way through
+  // typing. We only load a row when the *selection* actually changes.
+  const loadedEditIdRef = useRef("");
+
   useEffect(() => {
-    if (!initialEditId) return;
+    if (!initialEditId) {
+      loadedEditIdRef.current = ""; // allow re-selecting the same row later
+      return;
+    }
+    if (loadedEditIdRef.current === initialEditId) return;
+
     const row = rowMap.get(initialEditId);
     if (!row) return;
+
+    loadedEditIdRef.current = initialEditId;
     setTimeTouched(true);
     // In the combined store view, switch to the appointment's actual store so
     // the correct option lists (type, stylist, price point, etc.) are shown.
@@ -274,8 +287,16 @@ export function DailyLogWorkflowPanel({
     return () => window.clearInterval(interval);
   }, [isEditing, timeTouched]);
 
+  // Same guard as the dashboard panel: only clear dependent fields when the store
+  // selection genuinely changes, not when a background refresh hands us new
+  // (identical) option arrays and would otherwise wipe a partly filled form.
+  const storeKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (isEditing) return;
+    if (storeKeyRef.current === selectedStoreId) return;
+    storeKeyRef.current = selectedStoreId;
+
     setFormState((current) => ({
       ...current,
       appointmentTypeOptionId:

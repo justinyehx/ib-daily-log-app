@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
+import { AutoRefresh } from "@/components/auto-refresh";
 import { CurrentCustomersPanel } from "@/components/current-customers-panel";
 import { DashboardCheckInPanel } from "@/components/dashboard-check-in-panel";
 import { getCurrentSession } from "@/lib/auth";
@@ -100,6 +101,9 @@ export default async function DashboardPage({ params, searchParams }: DashboardP
       stores={dashboard.stores}
     >
       <div className="page-stack">
+        {/* Keeps the floor view current when a colleague checks someone in elsewhere. */}
+        <AutoRefresh />
+
         <header className="topbar">
           <div>
             <p className="eyebrow">Today</p>
