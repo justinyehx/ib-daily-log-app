@@ -456,9 +456,15 @@ export async function getDailyLogData(
       filters,
       filterSummary: getFilterSummary(filters),
       customerCount,
-      appointmentTypeOptions: store.options
-        .filter((option) => option.kind === "APPOINTMENT_TYPE" || option.kind === "WALK_IN_TYPE")
-        .map((option) => option.label),
+      // Deduped: most labels exist as both a scheduled type and a walk-in type,
+      // and the filter matches on the label, so one entry covers both.
+      appointmentTypeOptions: Array.from(
+        new Set(
+          store.options
+            .filter((option) => option.kind === "APPOINTMENT_TYPE" || option.kind === "WALK_IN_TYPE")
+            .map((option) => option.label)
+        )
+      ),
       workflowOptions: {
       storeId: shell.isVirtualStore ? "" : store.id,
       isVirtualStore: shell.isVirtualStore,

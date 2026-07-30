@@ -328,9 +328,20 @@ export async function getAnalyticsData(
       filteredAppointmentsCount: filteredAppointments.length,
       unassignedAppointmentsCount,
       availableStylistCount: stylistNames.length,
-      appointmentTypeOptions: shell.store.options
-        .filter((option) => option.kind === StoreOptionKind.APPOINTMENT_TYPE || option.kind === StoreOptionKind.WALK_IN_TYPE)
-        .map((option) => option.label),
+      // Most labels ("New Bride", "Accessories", …) exist twice — once as a
+      // scheduled type and once as a walk-in type. The filter matches on the
+      // label, so a single entry already covers both; without this the dropdown
+      // showed every one of them twice.
+      appointmentTypeOptions: Array.from(
+        new Set(
+          shell.store.options
+            .filter(
+              (option) =>
+                option.kind === StoreOptionKind.APPOINTMENT_TYPE || option.kind === StoreOptionKind.WALK_IN_TYPE
+            )
+            .map((option) => option.label)
+        )
+      ),
       pricePointOptions: shell.store.options
         .filter((option) => option.kind === StoreOptionKind.PRICE_POINT)
         .map((option) => option.label),
