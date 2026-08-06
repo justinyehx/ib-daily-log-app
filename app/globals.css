@@ -3469,3 +3469,130 @@ textarea:disabled {
     padding: 8px 10px;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   MOBILE LAYOUT PASS
+   Placed last so it wins over earlier rules.
+
+   Several multi-column grids had no mobile breakpoint at all and stayed 2-4
+   columns wide on a phone, which is what made the stat squares collapse into
+   an unreadable jumble. Each grid below is given a column count that suits its
+   content rather than being blanket-stacked: numbers read well two-up, whereas
+   form fields and comparison tables need the full width.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 640px) {
+  /* ── Stat squares: two-up ──
+     Three across is far too narrow at phone widths; the value text wrapped
+     mid-number. Two-up keeps figures on one line and stays scannable. */
+  .score-grid,
+  .settings-summary-grid,
+  .summary-grid-compact,
+  .loading-cards,
+  .hero-band-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  /* ── Side-by-side comparisons and forms: full width ──
+     These hold tables or inputs, which become unusable when halved. */
+  .analytics-breakdown-grid,
+  .account-form,
+  .stylist-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* ── Stat cards: trim the desktop proportions ──
+     min-height 132px plus a clamp() that resolves large on small viewports
+     made a handful of cards fill the whole screen. */
+  .summary-card {
+    min-height: 0;
+    padding: 14px;
+    gap: 4px;
+  }
+
+  .summary-value {
+    font-size: 1.75rem;
+    line-height: 1.1;
+  }
+
+  .summary-value-small {
+    font-size: 1.05rem;
+  }
+
+  .summary-label {
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+  }
+
+  .score-value {
+    font-size: 1.25rem;
+  }
+
+  /* An odd number of stat cards leaves the last one alone on its row —
+     let it span the full width instead of sitting half-empty. */
+  .stats-grid > .summary-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  /* ── Wide tables ──
+     These carry an intentional min-width and scroll horizontally. Momentum
+     scrolling and a contained width stop them dragging the whole page sideways. */
+  .table-wrap {
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  /* ── Pagination controls ── keep the pager usable one-handed. */
+  .table-pager {
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .table-pager-controls .button {
+    min-height: 38px;
+    padding: 4px 10px;
+  }
+
+  /* ── Role preview banner ── stack so the exit button is never squeezed out. */
+  .preview-banner {
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 14px;
+    text-align: center;
+  }
+}
+
+/* ── Very small phones (iPhone SE and similar) ── */
+@media (max-width: 380px) {
+  .score-grid,
+  .settings-summary-grid,
+  .summary-grid-compact,
+  .hero-band-stats,
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .content {
+    padding: 12px;
+  }
+}
+
+/* ── Root loading skeleton on mobile ──
+   .loading-shell kept its 300px sidebar column at every width (unlike .shell,
+   which collapses to a single column at 960px). On a phone that left roughly
+   90px for the content column, so the very first paint of every page load
+   looked broken. Match the real shell: hide the sidebar, go full width. */
+@media (max-width: 960px) {
+  .loading-shell {
+    display: block;
+  }
+
+  .loading-sidebar {
+    display: none;
+  }
+
+  .loading-content {
+    width: 100%;
+  }
+}
