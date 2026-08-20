@@ -130,6 +130,30 @@ type CustomerCheckoutCardProps = {
   dismissAction?: (formData: FormData) => void | Promise<void>;
 };
 
+/**
+ * Picks which option a select should show as selected.
+ *
+ * Each store has its own copy of every dropdown value, and the combined
+ * Galleria + Curve view merges the lists and drops duplicates by label — so an
+ * appointment can hold an id that is not in the list even though the same value
+ * is there under a different id. Matching the stored label as a fallback keeps
+ * the field visible instead of silently rendering blank.
+ */
+function selectedOptionId(
+  optionId: string | null | undefined,
+  label: string | null | undefined,
+  options: Array<{ id: string; label: string }>
+) {
+  if (optionId && options.some((option) => option.id === optionId)) return optionId;
+  if (label) {
+    const byLabel = options.find(
+      (option) => option.label.trim().toLowerCase() === label.trim().toLowerCase()
+    );
+    if (byLabel) return byLabel.id;
+  }
+  return "";
+}
+
 export function CustomerCheckoutCard({
   customer,
   reasonOptions,
@@ -185,7 +209,14 @@ export function CustomerCheckoutCard({
   const defaultLeadSourceOptionId =
     !customer.leadSourceOptionId && useSeamstressField
       ? leadSourceOptions.find((option) => option.label.toLowerCase() === "previous purchase")?.id || ""
-      : customer.leadSourceOptionId || "";
+      : selectedOptionId(customer.leadSourceOptionId, customer.leadSourceLabel, leadSourceOptions);
+
+  const defaultPricePointOptionId = selectedOptionId(
+    customer.pricePointOptionId,
+    customer.pricePointLabel,
+    pricePointOptions
+  );
+  const defaultSizeOptionId = selectedOptionId(customer.sizeOptionId, customer.sizeLabel, sizeOptions);
 
   if (isHidden) {
     return null;
@@ -305,7 +336,7 @@ export function CustomerCheckoutCard({
             {!hideBridalDetailFields ? (
               <label className="field">
                 <FieldLabel>Price</FieldLabel>
-                <select className="select" name="pricePointOptionId" defaultValue={customer.pricePointOptionId || ""}>
+                <select className="select" name="pricePointOptionId" defaultValue={defaultPricePointOptionId}>
                   <option value="">Select price point</option>
                   {pricePointOptions.map((option) => (
                     <option key={option.id} value={option.id}>{option.label}</option>
@@ -346,7 +377,7 @@ export function CustomerCheckoutCard({
             {!hideSizeField ? (
               <label className="field">
                 <FieldLabel>Size</FieldLabel>
-                <select className="select" name="sizeOptionId" defaultValue={customer.sizeOptionId || ""}>
+                <select className="select" name="sizeOptionId" defaultValue={defaultSizeOptionId}>
                   <option value="">Select size</option>
                   {sizeOptions.map((option) => (
                     <option key={option.id} value={option.id}>{option.label}</option>
@@ -491,7 +522,7 @@ export function CustomerCheckoutCard({
                 className="select"
                 name="pricePointOptionId"
                 required
-                defaultValue={customer.pricePointOptionId || ""}
+                defaultValue={defaultPricePointOptionId}
               >
                 <option value="">Select price point</option>
                 {pricePointOptions.map((option) => (

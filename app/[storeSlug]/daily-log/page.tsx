@@ -97,17 +97,17 @@ export default async function DailyLogPage({ params, searchParams }: DailyLogPag
 
         <DailyLogTableSection
           rows={dailyLog.rows}
-          workflowOptions={
-            // Non-admin users in the combined view can only create appointments
-            // for their own store — filter storeConfigs to prevent cross-store writes.
+          // Always pass every store's config. The form needs the *appointment's* own
+          // store to display its saved dropdown values correctly — filtering the list
+          // here previously left the edit form with no matching config, so price, size,
+          // lead source and stylist all rendered blank for the other store's entries.
+          workflowOptions={dailyLog.workflowOptions}
+          // Non-admins may still only *create* entries for their own store; this limits
+          // the store picker without hiding the configs needed for editing.
+          createStoreSlug={
             session.role !== "ADMIN" && dailyLog.workflowOptions.isVirtualStore
-              ? {
-                  ...dailyLog.workflowOptions,
-                  storeConfigs: dailyLog.workflowOptions.storeConfigs.filter(
-                    (c) => c.slug === session.storeSlug
-                  )
-                }
-              : dailyLog.workflowOptions
+              ? session.storeSlug
+              : undefined
           }
           storeSlug={storeSlug}
           createAction={createDailyLogEntry}

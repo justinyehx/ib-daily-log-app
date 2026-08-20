@@ -125,6 +125,8 @@ type DailyLogTableSectionProps = {
   workflowOptions: WorkflowOptions;
   /** Store view slug, used to scope the on-demand previous-customer search. */
   storeSlug: string;
+  /** When set, non-admins may only create entries for this store slug. */
+  createStoreSlug?: string;
   createAction: (formData: FormData) => void | Promise<void>;
   updateAction: (formData: FormData) => void | Promise<void>;
   deleteAction: (formData: FormData) => void | Promise<void>;
@@ -142,6 +144,7 @@ export function DailyLogTableSection({
   rows,
   workflowOptions,
   storeSlug,
+  createStoreSlug,
   createAction,
   updateAction,
   deleteAction,
@@ -240,6 +243,7 @@ export function DailyLogTableSection({
           leadSources={workflowOptions.leadSources}
           locations={workflowOptions.locations}
           onCancelEdit={handleCancelEdit}
+          createStoreSlug={createStoreSlug}
           lookupStoreSlug={storeSlug}
           pricePoints={workflowOptions.pricePoints}
           rows={editableRows}

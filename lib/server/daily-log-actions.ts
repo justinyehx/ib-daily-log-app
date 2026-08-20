@@ -6,6 +6,11 @@ import { revalidatePath } from "next/cache";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { normalizeName } from "@/lib/strings";
+import {
+  resolveLocationForStore,
+  resolveOptionForStore,
+  resolveStaffForStore
+} from "@/lib/server/option-resolvers";
 
 function asString(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return "";
@@ -74,63 +79,19 @@ async function resolveAppointmentRelations({
     prisma.store.findUnique({
       where: { id: storeId }
     }),
-    prisma.storeOption.findFirst({
-      where: {
-        id: appointmentTypeOptionId,
-        storeId,
-        kind: {
-          in: [StoreOptionKind.APPOINTMENT_TYPE, StoreOptionKind.WALK_IN_TYPE]
-        }
-      }
-    }),
-    assignedStaffMemberId
-      ? prisma.staffMember.findFirst({
-          where: {
-            id: assignedStaffMemberId,
-            storeId,
-            isActive: true
-          }
-        })
-      : Promise.resolve(null),
-    locationId
-      ? prisma.location.findFirst({
-          where: {
-            id: locationId,
-            storeId,
-            isActive: true
-          }
-        })
-      : Promise.resolve(null),
-    leadSourceOptionId
-      ? prisma.storeOption.findFirst({
-          where: {
-            id: leadSourceOptionId,
-            storeId,
-            kind: StoreOptionKind.LEAD_SOURCE,
-            isActive: true
-          }
-        })
-      : Promise.resolve(null),
-    pricePointOptionId
-      ? prisma.storeOption.findFirst({
-          where: {
-            id: pricePointOptionId,
-            storeId,
-            kind: StoreOptionKind.PRICE_POINT,
-            isActive: true
-          }
-        })
-      : Promise.resolve(null),
-    sizeOptionId
-      ? prisma.storeOption.findFirst({
-          where: {
-            id: sizeOptionId,
-            storeId,
-            kind: StoreOptionKind.SIZE,
-            isActive: true
-          }
-        })
-      : Promise.resolve(null)
+    // Appointment type may be submitted as either kind, and is not filtered by
+    // isActive so historical types keep resolving.
+    resolveOptionForStore(
+      appointmentTypeOptionId,
+      storeId,
+      [StoreOptionKind.APPOINTMENT_TYPE, StoreOptionKind.WALK_IN_TYPE],
+      false
+    ),
+    resolveStaffForStore(assignedStaffMemberId, storeId),
+    resolveLocationForStore(locationId, storeId),
+    resolveOptionForStore(leadSourceOptionId, storeId, [StoreOptionKind.LEAD_SOURCE]),
+    resolveOptionForStore(pricePointOptionId, storeId, [StoreOptionKind.PRICE_POINT]),
+    resolveOptionForStore(sizeOptionId, storeId, [StoreOptionKind.SIZE])
   ]);
 
   if (!store || !appointmentTypeOption) {
@@ -361,12 +322,23 @@ export async function updateDailyLogEntry(formData: FormData) {
         ? AppointmentStatus.WAITING
         : AppointmentStatus.ACTIVE;
 
+  // Safety net: only overwrite a detail field when the form actually submitted a
+  // value for it. A field that arrives empty leaves the stored value untouched,
+  // so a form that fails to render a dropdown correctly can never silently erase
+  // data that is already recorded. To change one of these, pick a different value.
+  const keepIfBlank = <T>(submittedId: string, resolved: T | null, existing: T | null) =>
+    submittedId ? (resolved ?? existing) : existing;
+
   await prisma.appointment.update({
     where: { id: appointmentId },
     data: {
       customerId: customer.id,
-      assignedStaffMemberId: assignedStaffMember?.id || null,
-      locationId: location?.id || null,
+      assignedStaffMemberId: keepIfBlank(
+        assignedStaffMemberId,
+        assignedStaffMember?.id ?? null,
+        existingAppointment.assignedStaffMemberId
+      ),
+      locationId: keepIfBlank(locationId, location?.id ?? null, existingAppointment.locationId),
       appointmentDate,
       timeIn,
       timeOut,
@@ -374,12 +346,28 @@ export async function updateDailyLogEntry(formData: FormData) {
       visitType,
       appointmentTypeOptionId: appointmentTypeOption.id,
       appointmentTypeLabel: appointmentTypeOption.label,
-      leadSourceOptionId: leadSourceOption?.id || null,
-      leadSourceLabel: leadSourceOption?.label || null,
-      pricePointOptionId: pricePointOption?.id || null,
-      pricePointLabel: pricePointOption?.label || null,
-      sizeOptionId: sizeOption?.id || null,
-      sizeLabel: sizeOption?.label || null,
+      leadSourceOptionId: keepIfBlank(
+        leadSourceOptionId,
+        leadSourceOption?.id ?? null,
+        existingAppointment.leadSourceOptionId
+      ),
+      leadSourceLabel: keepIfBlank(
+        leadSourceOptionId,
+        leadSourceOption?.label ?? null,
+        existingAppointment.leadSourceLabel
+      ),
+      pricePointOptionId: keepIfBlank(
+        pricePointOptionId,
+        pricePointOption?.id ?? null,
+        existingAppointment.pricePointOptionId
+      ),
+      pricePointLabel: keepIfBlank(
+        pricePointOptionId,
+        pricePointOption?.label ?? null,
+        existingAppointment.pricePointLabel
+      ),
+      sizeOptionId: keepIfBlank(sizeOptionId, sizeOption?.id ?? null, existingAppointment.sizeOptionId),
+      sizeLabel: keepIfBlank(sizeOptionId, sizeOption?.label ?? null, existingAppointment.sizeLabel),
       status: resolvedStatus,
       purchased: purchasedInput === "Yes" ? true : purchasedInput === "No" ? false : null,
       otherPurchase: otherPurchaseInput === "Yes" ? true : otherPurchaseInput === "No" ? false : null,

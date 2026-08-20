@@ -7,6 +7,11 @@ import { prisma } from "@/lib/prisma";
 import { normalizeName } from "@/lib/strings";
 import { skipsPurchasedField } from "@/lib/appointment-form-utils";
 import { verifyPassword } from "@/lib/passwords";
+import {
+  resolveLocationForStore,
+  resolveOptionForStore,
+  resolveStaffForStore
+} from "@/lib/server/option-resolvers";
 
 function asString(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return "";
@@ -61,63 +66,17 @@ export async function createDashboardCheckIn(formData: FormData) {
       prisma.store.findUnique({
         where: { id: storeId }
       }),
-      prisma.storeOption.findFirst({
-        where: {
-          id: appointmentTypeOptionId,
-          storeId,
-          kind: {
-            in: [StoreOptionKind.APPOINTMENT_TYPE, StoreOptionKind.WALK_IN_TYPE]
-          }
-        }
-      }),
-      assignedStaffMemberId
-        ? prisma.staffMember.findFirst({
-            where: {
-              id: assignedStaffMemberId,
-              storeId,
-              isActive: true
-            }
-          })
-        : Promise.resolve(null),
-      locationId
-        ? prisma.location.findFirst({
-            where: {
-              id: locationId,
-              storeId,
-              isActive: true
-            }
-          })
-        : Promise.resolve(null),
-      leadSourceOptionId
-        ? prisma.storeOption.findFirst({
-            where: {
-              id: leadSourceOptionId,
-              storeId,
-              kind: StoreOptionKind.LEAD_SOURCE,
-              isActive: true
-            }
-          })
-        : Promise.resolve(null),
-      pricePointOptionId
-        ? prisma.storeOption.findFirst({
-            where: {
-              id: pricePointOptionId,
-              storeId,
-              kind: StoreOptionKind.PRICE_POINT,
-              isActive: true
-            }
-          })
-        : Promise.resolve(null),
-      sizeOptionId
-        ? prisma.storeOption.findFirst({
-            where: {
-              id: sizeOptionId,
-              storeId,
-              kind: StoreOptionKind.SIZE,
-              isActive: true
-            }
-          })
-        : Promise.resolve(null),
+      resolveOptionForStore(
+        appointmentTypeOptionId,
+        storeId,
+        [StoreOptionKind.APPOINTMENT_TYPE, StoreOptionKind.WALK_IN_TYPE],
+        false
+      ),
+      resolveStaffForStore(assignedStaffMemberId, storeId),
+      resolveLocationForStore(locationId, storeId),
+      resolveOptionForStore(leadSourceOptionId, storeId, [StoreOptionKind.LEAD_SOURCE]),
+      resolveOptionForStore(pricePointOptionId, storeId, [StoreOptionKind.PRICE_POINT]),
+      resolveOptionForStore(sizeOptionId, storeId, [StoreOptionKind.SIZE]),
       bridalLiveAppointmentId
         ? prisma.bridalLiveAppointment.findFirst({
             where: {
@@ -305,57 +264,17 @@ export async function quickCheckoutCurrentCustomer(formData: FormData) {
     }
   }
 
-  const reasonDidNotBuyOption = reasonDidNotBuyOptionId
-    ? await prisma.storeOption.findFirst({
-        where: {
-          id: reasonDidNotBuyOptionId,
-          storeId: appointment.storeId,
-          kind: StoreOptionKind.REASON_DID_NOT_BUY,
-          isActive: true
-        }
-      })
-    : null;
+  const reasonDidNotBuyOption = await resolveOptionForStore(
+    reasonDidNotBuyOptionId,
+    appointment.storeId,
+    [StoreOptionKind.REASON_DID_NOT_BUY]
+  );
 
   const [assignedStaffMember, leadSourceOption, pricePointOption, sizeOption] = await Promise.all([
-    assignedStaffMemberId
-      ? prisma.staffMember.findFirst({
-          where: {
-            id: assignedStaffMemberId,
-            storeId: appointment.storeId,
-            isActive: true
-          }
-        })
-      : Promise.resolve(null),
-    leadSourceOptionId
-      ? prisma.storeOption.findFirst({
-          where: {
-            id: leadSourceOptionId,
-            storeId: appointment.storeId,
-            kind: StoreOptionKind.LEAD_SOURCE,
-            isActive: true
-          }
-        })
-      : Promise.resolve(null),
-    pricePointOptionId
-      ? prisma.storeOption.findFirst({
-          where: {
-            id: pricePointOptionId,
-            storeId: appointment.storeId,
-            kind: StoreOptionKind.PRICE_POINT,
-            isActive: true
-          }
-        })
-      : Promise.resolve(null),
-    sizeOptionId
-      ? prisma.storeOption.findFirst({
-          where: {
-            id: sizeOptionId,
-            storeId: appointment.storeId,
-            kind: StoreOptionKind.SIZE,
-            isActive: true
-          }
-        })
-      : Promise.resolve(null)
+    resolveStaffForStore(assignedStaffMemberId, appointment.storeId),
+    resolveOptionForStore(leadSourceOptionId, appointment.storeId, [StoreOptionKind.LEAD_SOURCE]),
+    resolveOptionForStore(pricePointOptionId, appointment.storeId, [StoreOptionKind.PRICE_POINT]),
+    resolveOptionForStore(sizeOptionId, appointment.storeId, [StoreOptionKind.SIZE])
   ]);
 
   const wearDate = wearDateInput ? new Date(`${wearDateInput}T00:00:00`) : null;
@@ -412,18 +331,10 @@ export async function saveAppointmentDetails(formData: FormData) {
   const skipsPurchased = skipsPurchasedField(appointment.appointmentTypeLabel);
 
   const [assignedStaffMember, leadSourceOption, pricePointOption, sizeOption] = await Promise.all([
-    assignedStaffMemberId
-      ? prisma.staffMember.findFirst({ where: { id: assignedStaffMemberId, storeId: appointment.storeId, isActive: true } })
-      : Promise.resolve(null),
-    leadSourceOptionId
-      ? prisma.storeOption.findFirst({ where: { id: leadSourceOptionId, storeId: appointment.storeId, kind: StoreOptionKind.LEAD_SOURCE, isActive: true } })
-      : Promise.resolve(null),
-    pricePointOptionId
-      ? prisma.storeOption.findFirst({ where: { id: pricePointOptionId, storeId: appointment.storeId, kind: StoreOptionKind.PRICE_POINT, isActive: true } })
-      : Promise.resolve(null),
-    sizeOptionId
-      ? prisma.storeOption.findFirst({ where: { id: sizeOptionId, storeId: appointment.storeId, kind: StoreOptionKind.SIZE, isActive: true } })
-      : Promise.resolve(null)
+    resolveStaffForStore(assignedStaffMemberId, appointment.storeId),
+    resolveOptionForStore(leadSourceOptionId, appointment.storeId, [StoreOptionKind.LEAD_SOURCE]),
+    resolveOptionForStore(pricePointOptionId, appointment.storeId, [StoreOptionKind.PRICE_POINT]),
+    resolveOptionForStore(sizeOptionId, appointment.storeId, [StoreOptionKind.SIZE])
   ]);
 
   const wearDate = wearDateInput ? new Date(`${wearDateInput}T00:00:00`) : null;

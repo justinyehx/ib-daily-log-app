@@ -85,6 +85,10 @@ type DailyLogWorkflowPanelProps = {
   initialEditId?: string;
   /** Store view slug used to scope the previous-customer search. */
   lookupStoreSlug: string;
+  /** When set, the store picker is limited to this slug (non-admins in the combined
+   *  view). Editing still uses the full storeConfigs list so an appointment from the
+   *  other store shows its own saved dropdown values. */
+  createStoreSlug?: string;
   isVirtualStore?: boolean;
   storeConfigs?: StoreConfig[];
   /** Called when the user clicks "Cancel edit" or removes an entry, so a parent can clear its selected-row state. */
@@ -175,11 +179,20 @@ export function DailyLogWorkflowPanel({
   rows,
   initialEditId,
   lookupStoreSlug,
+  createStoreSlug,
   onCancelEdit
 }: DailyLogWorkflowPanelProps) {
+  // Stores a non-admin is allowed to create entries for. Editing is unrestricted —
+  // the server still blocks cross-store writes.
+  const creatableStoreConfigs = createStoreSlug
+    ? storeConfigs.filter((config) => config.slug === createStoreSlug)
+    : storeConfigs;
+
   // Store configs arrive sorted by name, which puts "Curve by IB" first. Galleria is
   // the busier store, so prefer it as the default when both are available.
   const defaultStoreId =
+    creatableStoreConfigs.find((config) => config.slug === DEFAULT_STORE_SLUG)?.storeId ||
+    creatableStoreConfigs[0]?.storeId ||
     storeConfigs.find((config) => config.slug === DEFAULT_STORE_SLUG)?.storeId ||
     storeConfigs[0]?.storeId ||
     storeId;
@@ -491,7 +504,7 @@ export function DailyLogWorkflowPanel({
                 value={selectedStoreId}
                 onChange={(event) => setSelectedStoreId(event.target.value)}
               >
-                {storeConfigs.map((config) => (
+                {creatableStoreConfigs.map((config) => (
                   <option key={config.storeId} value={config.storeId}>
                     {config.name}
                   </option>
