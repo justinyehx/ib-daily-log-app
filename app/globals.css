@@ -3596,3 +3596,125 @@ textarea:disabled {
     width: 100%;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SCHEDULING TAB — walk-in demand heatmap, weekday bars, coverage table
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.sched-heat td.sched-cell {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  min-width: 54px;
+}
+
+.sched-dayname {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sched-total {
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.sched-parthours {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  opacity: 0.7;
+}
+
+.sched-need {
+  font-size: 1.15rem;
+}
+
+.sched-need-high {
+  background: rgba(171, 93, 59, 0.1);
+}
+
+/* ── Weekday bars ── */
+.sched-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.sched-bar-row {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 52px;
+  align-items: center;
+  gap: 10px;
+}
+
+.sched-bar-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.sched-bar-track {
+  display: flex;
+  height: 20px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(171, 93, 59, 0.06);
+}
+
+.sched-bar {
+  height: 100%;
+}
+
+.sched-bar.walkin {
+  background: #ab5d3b;
+}
+
+.sched-bar.booked {
+  background: rgba(171, 93, 59, 0.22);
+}
+
+.sched-bar-value {
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.sched-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  margin-top: 12px;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.sched-swatch {
+  display: inline-block;
+  width: 22px;
+  height: 10px;
+  border-radius: 3px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.sched-swatch.walkin {
+  background: #ab5d3b;
+}
+
+.sched-swatch.booked {
+  background: rgba(171, 93, 59, 0.22);
+}
+
+@media (max-width: 640px) {
+  .sched-bar-row {
+    grid-template-columns: 76px minmax(0, 1fr) 44px;
+    gap: 8px;
+  }
+
+  .sched-heat td.sched-cell {
+    min-width: 44px;
+    padding: 6px 4px;
+  }
+}

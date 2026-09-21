@@ -12,7 +12,7 @@ import { exitRolePreview } from "@/lib/server/settings-actions";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type AppShellProps = {
-  activeView: "dashboard" | "daily-log" | "analytics" | "stylists" | "timeline" | "settings" | "admin-view";
+  activeView: "dashboard" | "daily-log" | "analytics" | "stylists" | "timeline" | "scheduling" | "settings" | "admin-view";
   storeSlug: string;
   storeName: string;
   session: CurrentSession;
@@ -39,6 +39,7 @@ function buildNavItems(storeSlug: string): Array<{
     { key: "analytics", label: "Analytics", href: `/${storeSlug}/analytics` },
     { key: "timeline", label: "Timeline", href: `/${storeSlug}/analytics/timeline` },
     { key: "stylists", label: "Stylists", href: `/${storeSlug}/stylists` },
+    { key: "scheduling", label: "Scheduling", href: `/${storeSlug}/scheduling` },
     { key: "admin-view", label: "Admin View", href: `/${storeSlug}/admin-view` },
   ];
 }
@@ -82,7 +83,8 @@ export function AppShell({ activeView, storeSlug, storeName, session, snapshot, 
     }
 
     if (session.role === "MANAGER") {
-      return item.key !== "admin-view";
+      // "scheduling" is hidden while its seasonal model is still provisional.
+      return item.key !== "admin-view" && item.key !== "scheduling";
     }
 
     return true;
