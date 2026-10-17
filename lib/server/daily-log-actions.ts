@@ -11,33 +11,46 @@ import {
   resolveOptionForStore,
   resolveStaffForStore
 } from "@/lib/server/option-resolvers";
+import { COMBINED_SOURCE_SLUGS } from "@/lib/store-views";
 
 function asString(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return "";
   return value.trim();
 }
 
-/** Resolves the DB store ID for the current session's store slug. Throws if not found.
- *  ADMIN users have access to all stores, so storeId is returned as null for them —
- *  callers must skip per-store ownership checks when storeId is null. */
+/**
+ * Resolves which stores the current session may write to.
+ *
+ * Returns null for ADMIN, meaning every store — admins may also be sitting on the
+ * virtual combined store, which has no real DB row to look up.
+ *
+ * Galleria and Curve are one location trading under two names with separate books.
+ * Staff work the combined view and check guests into whichever side they belong to,
+ * so an account on either may write to both. Without this, Galleria front desk got
+ * "Not authorized to edit this appointment" the moment they touched a Curve row —
+ * and because there is no Curve account at all, nobody could have edited those rows.
+ */
 async function requireSessionStore() {
   const session = await getCurrentSession();
   if (!session.isAuthenticated) {
     throw new Error("Authentication required.");
   }
-  // ADMIN accounts may be associated with a virtual combined store that has no
-  // real DB row — skip the store lookup and return null to signal all-store access.
   if (session.role === "ADMIN") {
-    return { session, storeId: null as string | null };
+    return { session, allowedStoreIds: null as string[] | null };
   }
-  const store = await prisma.store.findUnique({
-    where: { slug: session.storeSlug },
+
+  const slugs: string[] = (COMBINED_SOURCE_SLUGS as readonly string[]).includes(session.storeSlug)
+    ? [...COMBINED_SOURCE_SLUGS]
+    : [session.storeSlug];
+
+  const stores = await prisma.store.findMany({
+    where: { slug: { in: slugs } },
     select: { id: true }
   });
-  if (!store) {
+  if (!stores.length) {
     throw new Error("Store not found.");
   }
-  return { session, storeId: store.id as string | null };
+  return { session, allowedStoreIds: stores.map((store) => store.id) as string[] | null };
 }
 
 function buildClientDateTime(baseDate: string, timeValue: string, offsetMinutesInput: string) {
@@ -111,7 +124,7 @@ async function resolveAppointmentRelations({
 
 export async function createDailyLogEntry(formData: FormData) {
   // Auth: verify the session and that the submitted storeId belongs to the session's store.
-  const { storeId: sessionStoreId } = await requireSessionStore();
+  const { allowedStoreIds } = await requireSessionStore();
 
   const storeId = asString(formData.get("storeId"));
   const guestName = asString(formData.get("guestName"));
@@ -136,8 +149,8 @@ export async function createDailyLogEntry(formData: FormData) {
   }
 
   // Verify the submitted store matches the session store (prevents cross-store writes).
-  // ADMIN users (sessionStoreId === null) are allowed to write to any store.
-  if (sessionStoreId !== null && storeId !== sessionStoreId) {
+  // allowedStoreIds === null means ADMIN, i.e. every store.
+  if (allowedStoreIds !== null && !allowedStoreIds.includes(storeId)) {
     throw new Error("Not authorized to add entries for this store.");
   }
 
@@ -225,7 +238,7 @@ export async function createDailyLogEntry(formData: FormData) {
 
 export async function updateDailyLogEntry(formData: FormData) {
   // Auth: require authenticated session with store ownership verified after appointment lookup.
-  const { storeId: sessionStoreId } = await requireSessionStore();
+  const { allowedStoreIds } = await requireSessionStore();
 
   const appointmentId = asString(formData.get("appointmentId"));
   const guestName = asString(formData.get("guestName"));
@@ -264,8 +277,8 @@ export async function updateDailyLogEntry(formData: FormData) {
   }
 
   // Verify the appointment belongs to the session's store.
-  // ADMIN users (sessionStoreId === null) may edit appointments in any store.
-  if (sessionStoreId !== null && existingAppointment.storeId !== sessionStoreId) {
+  // allowedStoreIds === null means ADMIN, i.e. every store.
+  if (allowedStoreIds !== null && !allowedStoreIds.includes(existingAppointment.storeId)) {
     throw new Error("Not authorized to edit this appointment.");
   }
 
@@ -382,7 +395,7 @@ export async function updateDailyLogEntry(formData: FormData) {
 
 export async function deleteDailyLogEntry(formData: FormData) {
   // Auth: require authenticated session and verify store ownership.
-  const { storeId: sessionStoreId } = await requireSessionStore();
+  const { allowedStoreIds } = await requireSessionStore();
 
   const appointmentId = asString(formData.get("appointmentId"));
 
@@ -399,8 +412,8 @@ export async function deleteDailyLogEntry(formData: FormData) {
     throw new Error("Appointment could not be found.");
   }
 
-  // ADMIN users (sessionStoreId === null) may delete appointments in any store.
-  if (sessionStoreId !== null && appointment.storeId !== sessionStoreId) {
+  // allowedStoreIds === null means ADMIN, i.e. every store.
+  if (allowedStoreIds !== null && !allowedStoreIds.includes(appointment.storeId)) {
     throw new Error("Not authorized to remove this appointment.");
   }
 

@@ -60,15 +60,17 @@ const COMBINED_SOURCE_SLUGS = ["galleria", "curve"];
 export function AppShell({ activeView, storeSlug, storeName, session, snapshot, stores = [], children }: AppShellProps) {
   const [navOpen, setNavOpen] = useState(false);
 
-  // Determine which stores this user can switch between.
-  // ADMIN sees all stores. Galleria/Curve users see their own store + the combined view.
-  // All other roles stay locked to their assigned store.
+  // Which stores this user can switch between.
+  // ADMIN sees every store. Galleria and Curve are run as one operation, so an
+  // account on either sees Galleria, Curve and the combined view — there is no
+  // Curve-specific login, so Galleria staff need all three. Everyone else stays
+  // locked to their assigned store.
   const switchableStores =
     session.role === "ADMIN"
       ? stores
       : COMBINED_SOURCE_SLUGS.includes(session.storeSlug)
         ? stores.filter(
-            (s) => s.slug === session.storeSlug || s.slug === COMBINED_STORE_SLUG
+            (s) => COMBINED_SOURCE_SLUGS.includes(s.slug) || s.slug === COMBINED_STORE_SLUG
           )
         : [];
 

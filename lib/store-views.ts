@@ -8,7 +8,7 @@ import { normalizeKey } from "@/lib/strings";
 export const COMBINED_STORE_SLUG = "galleria-curve";
 export const COMBINED_STORE_NAME = "Galleria and Curve";
 
-const COMBINED_SOURCE_SLUGS = ["galleria", "curve"] as const;
+export const COMBINED_SOURCE_SLUGS = ["galleria", "curve"] as const;
 
 type StoreChoice = {
   id: string;
@@ -124,18 +124,21 @@ export function isCombinedStoreSlug(storeSlug: string) {
  *
  * Rules:
  *  - Any user can view their own store.
- *  - Galleria and Curve users can also view the combined "galleria-curve" store.
- *    ADMIN bypasses this check entirely (handled at the page level).
+ *  - Galleria and Curve are managed as one operation, so an account on either
+ *    may view the other store *and* the combined "galleria-curve" view. There is
+ *    no Curve-specific login, so without this, Curve's own pages would be
+ *    unreachable by the staff who actually work them.
+ *  - Every other store stays isolated: San Antonio cannot view Atlanta.
+ *
+ * ADMIN bypasses this check entirely (handled at the page level).
  */
 export function canViewStoreSlug(sessionStoreSlug: string, requestedStoreSlug: string): boolean {
   if (sessionStoreSlug === requestedStoreSlug) return true;
-  if (
-    requestedStoreSlug === COMBINED_STORE_SLUG &&
-    (COMBINED_SOURCE_SLUGS as readonly string[]).includes(sessionStoreSlug)
-  ) {
-    return true;
-  }
-  return false;
+
+  const sourceSlugs = COMBINED_SOURCE_SLUGS as readonly string[];
+  if (!sourceSlugs.includes(sessionStoreSlug)) return false;
+
+  return requestedStoreSlug === COMBINED_STORE_SLUG || sourceSlugs.includes(requestedStoreSlug);
 }
 
 export const getAllStoreChoices = cache(async function getAllStoreChoices() {

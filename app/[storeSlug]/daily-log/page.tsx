@@ -102,13 +102,10 @@ export default async function DailyLogPage({ params, searchParams }: DailyLogPag
           // here previously left the edit form with no matching config, so price, size,
           // lead source and stylist all rendered blank for the other store's entries.
           workflowOptions={dailyLog.workflowOptions}
-          // Non-admins may still only *create* entries for their own store; this limits
-          // the store picker without hiding the configs needed for editing.
-          createStoreSlug={
-            session.role !== "ADMIN" && dailyLog.workflowOptions.isVirtualStore
-              ? session.storeSlug
-              : undefined
-          }
+          // The store picker is intentionally unrestricted. The combined view only
+          // exists for Galleria + Curve, which trade as one location, and there is no
+          // Curve-specific login — so Galleria front desk must be able to check guests
+          // into either side. The server authorises both for these accounts.
           storeSlug={storeSlug}
           createAction={createDailyLogEntry}
           updateAction={updateDailyLogEntry}
