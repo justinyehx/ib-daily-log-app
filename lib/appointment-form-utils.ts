@@ -4,6 +4,23 @@
  */
 
 /** Returns true when the appointment type label refers to an alteration. */
+/**
+ * Value submitted by a dropdown's own "none" option (e.g. "Select price point").
+ *
+ * An empty string is ambiguous on the server: it means both "the user chose
+ * nothing" and "the form never rendered this field". The save deliberately keeps
+ * the stored value in the second case, so a display bug can't erase real data —
+ * but that also made it impossible to clear a field on purpose. This sentinel
+ * separates the two: only an explicit pick of the blank option clears the field.
+ */
+export const CLEAR_FIELD_VALUE = "__clear__";
+
+/** Normalises a stored id for use as a <select> value — empty becomes the sentinel
+ *  so the "none" option shows as selected rather than the control looking blank. */
+export function toSelectValue(optionId: string | null | undefined) {
+  return optionId || CLEAR_FIELD_VALUE;
+}
+
 export function isAlterationLabel(value: string) {
   return value.toLowerCase().includes("alteration");
 }

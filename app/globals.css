@@ -141,10 +141,76 @@ textarea:disabled {
   flex-direction: column;
   gap: 28px;
   height: 100vh;
+  /* dvh tracks the usable viewport; browsers without it fall back to the line above */
+  height: 100dvh;
   padding: 28px 22px;
   border-right: 1px solid var(--border);
   background: rgba(252, 246, 238, 0.88);
   backdrop-filter: blur(16px);
+  /* The sidebar is a fixed 100vh column, so at browser zoom (or on a short
+     laptop screen) the nav and the snapshot card ran past the bottom edge with
+     no way to reach them. Scrolling inside the column keeps every item
+     reachable at any zoom level. overscroll-behavior stops that scroll from
+     chaining into the page once it bottoms out. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+/* Keep the scrollbar unobtrusive until it's needed. */
+.sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(122, 69, 34, 0.22);
+  border-radius: 8px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(122, 69, 34, 0.38);
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ── Short viewports (zoomed in, or a small laptop) ──
+   Tighten the vertical rhythm before falling back to scrolling, so in most
+   cases everything still fits without the user having to scroll at all. */
+@media (max-height: 760px) {
+  .sidebar {
+    gap: 16px;
+    padding: 16px 18px;
+  }
+
+  .nav {
+    gap: 2px;
+  }
+
+  .nav-link {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .sidebar-card {
+    padding: 12px 14px;
+  }
+}
+
+@media (max-height: 620px) {
+  .sidebar {
+    gap: 12px;
+  }
+
+  .brand-title {
+    font-size: 1.15rem;
+  }
+
+  /* The snapshot is a convenience, not navigation — let it shrink last. */
+  .sidebar-card {
+    padding: 10px 12px;
+  }
 }
 
 .sidebar-top {
@@ -3717,4 +3783,44 @@ textarea:disabled {
     min-width: 44px;
     padding: 6px 4px;
   }
+}
+
+/* ── Daily log export (Settings) ── */
+.export-block {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.export-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.export-presets .button {
+  padding: 6px 14px;
+  font-size: 0.82rem;
+}
+
+.export-error {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid #e9c4c0;
+  border-left: 4px solid #b3402f;
+  border-radius: 8px;
+  background: #fdedec;
+  font-size: 0.86rem;
+}
+
+/* Active window chip in the export picker */
+.export-presets .button.active {
+  background: #ab5d3b;
+  border-color: #ab5d3b;
+  color: #fff;
+}
+
+.export-window-note {
+  margin: 0;
+  opacity: 0.8;
 }

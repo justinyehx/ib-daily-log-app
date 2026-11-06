@@ -5,9 +5,11 @@ import { AppShell } from "@/components/app-shell";
 import { SettingsAccessForm } from "@/components/settings-access-form";
 import { SubmitButton } from "@/components/submit-button";
 import { UserAccountForm } from "@/components/user-account-form";
+import { DailyLogExportForm } from "@/components/daily-log-export-form";
 import { getCurrentSession } from "@/lib/auth";
 import { buildQuery } from "@/lib/query-utils";
 import { getSettingsData } from "@/lib/reporting-data";
+import { prisma } from "@/lib/prisma";
 import { addSettingsItem, disableUserAccount, removeSettingsItem, updateStaffMemberRole } from "@/lib/server/settings-actions";
 import { canViewStoreSlug } from "@/lib/store-views";
 
@@ -29,7 +31,16 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
   }
 
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const settings = await getSettingsData(storeSlug);
+  const [settings, earliestAppointment] = await Promise.all([
+    getSettingsData(storeSlug),
+    // Powers the export's "All time" preset so it never asks for a range that
+    // predates the data.
+    prisma.appointment.findFirst({
+      where: { deletedAt: null },
+      orderBy: { appointmentDate: "asc" },
+      select: { appointmentDate: true }
+    })
+  ]);
 
   if (!settings) return null;
 
@@ -325,6 +336,24 @@ export default async function SettingsPage({ params, searchParams }: SettingsPag
           )}
         </section>
 
+
+        <section className="panel">
+          <div className="panel-head">
+            <div>
+              <p className="panel-kicker">Data Export</p>
+              <h3>Export the daily log</h3>
+            </div>
+          </div>
+          <DailyLogExportForm
+            storeSlug={storeSlug}
+            storeName={settings.store.name}
+            earliestDate={
+              earliestAppointment
+                ? earliestAppointment.appointmentDate.toISOString().slice(0, 10)
+                : new Date().toISOString().slice(0, 10)
+            }
+          />
+        </section>
         <section className="panel">
           <div className="panel-head">
             <div>

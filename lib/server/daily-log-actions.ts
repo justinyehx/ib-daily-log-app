@@ -12,6 +12,7 @@ import {
   resolveStaffForStore
 } from "@/lib/server/option-resolvers";
 import { COMBINED_SOURCE_SLUGS } from "@/lib/store-views";
+import { CLEAR_FIELD_VALUE } from "@/lib/appointment-form-utils";
 
 function asString(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return "";
@@ -335,23 +336,31 @@ export async function updateDailyLogEntry(formData: FormData) {
         ? AppointmentStatus.WAITING
         : AppointmentStatus.ACTIVE;
 
-  // Safety net: only overwrite a detail field when the form actually submitted a
-  // value for it. A field that arrives empty leaves the stored value untouched,
-  // so a form that fails to render a dropdown correctly can never silently erase
-  // data that is already recorded. To change one of these, pick a different value.
-  const keepIfBlank = <T>(submittedId: string, resolved: T | null, existing: T | null) =>
-    submittedId ? (resolved ?? existing) : existing;
+  /**
+   * Decides what to write for an optional dropdown field.
+   *
+   *  - the sentinel  -> the user picked the "none" option, so clear it
+   *  - empty string  -> the form never sent this field; keep what is stored, so a
+   *                     dropdown that fails to render can't silently erase data
+   *  - a real value  -> use it, falling back to the stored value if it would not
+   *                     resolve (a cross-store id, for instance)
+   */
+  const resolveField = <T>(submittedId: string, resolved: T | null, existing: T | null) => {
+    if (submittedId === CLEAR_FIELD_VALUE) return null;
+    if (!submittedId) return existing;
+    return resolved ?? existing;
+  };
 
   await prisma.appointment.update({
     where: { id: appointmentId },
     data: {
       customerId: customer.id,
-      assignedStaffMemberId: keepIfBlank(
+      assignedStaffMemberId: resolveField(
         assignedStaffMemberId,
         assignedStaffMember?.id ?? null,
         existingAppointment.assignedStaffMemberId
       ),
-      locationId: keepIfBlank(locationId, location?.id ?? null, existingAppointment.locationId),
+      locationId: resolveField(locationId, location?.id ?? null, existingAppointment.locationId),
       appointmentDate,
       timeIn,
       timeOut,
@@ -359,28 +368,28 @@ export async function updateDailyLogEntry(formData: FormData) {
       visitType,
       appointmentTypeOptionId: appointmentTypeOption.id,
       appointmentTypeLabel: appointmentTypeOption.label,
-      leadSourceOptionId: keepIfBlank(
+      leadSourceOptionId: resolveField(
         leadSourceOptionId,
         leadSourceOption?.id ?? null,
         existingAppointment.leadSourceOptionId
       ),
-      leadSourceLabel: keepIfBlank(
+      leadSourceLabel: resolveField(
         leadSourceOptionId,
         leadSourceOption?.label ?? null,
         existingAppointment.leadSourceLabel
       ),
-      pricePointOptionId: keepIfBlank(
+      pricePointOptionId: resolveField(
         pricePointOptionId,
         pricePointOption?.id ?? null,
         existingAppointment.pricePointOptionId
       ),
-      pricePointLabel: keepIfBlank(
+      pricePointLabel: resolveField(
         pricePointOptionId,
         pricePointOption?.label ?? null,
         existingAppointment.pricePointLabel
       ),
-      sizeOptionId: keepIfBlank(sizeOptionId, sizeOption?.id ?? null, existingAppointment.sizeOptionId),
-      sizeLabel: keepIfBlank(sizeOptionId, sizeOption?.label ?? null, existingAppointment.sizeLabel),
+      sizeOptionId: resolveField(sizeOptionId, sizeOption?.id ?? null, existingAppointment.sizeOptionId),
+      sizeLabel: resolveField(sizeOptionId, sizeOption?.label ?? null, existingAppointment.sizeLabel),
       status: resolvedStatus,
       purchased: purchasedInput === "Yes" ? true : purchasedInput === "No" ? false : null,
       otherPurchase: otherPurchaseInput === "Yes" ? true : otherPurchaseInput === "No" ? false : null,

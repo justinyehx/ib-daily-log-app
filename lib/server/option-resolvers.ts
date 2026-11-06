@@ -1,6 +1,7 @@
 import { StoreOptionKind } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { CLEAR_FIELD_VALUE } from "@/lib/appointment-form-utils";
 
 /**
  * Store-scoped lookup helpers with a label fallback.
@@ -26,7 +27,8 @@ export async function resolveOptionForStore(
   kinds: StoreOptionKind[],
   requireActive = true
 ) {
-  if (!optionId) return null;
+  // The sentinel means "none" — never try to look it up.
+  if (!optionId || optionId === CLEAR_FIELD_VALUE) return null;
 
   const activeFilter = requireActive ? { isActive: true } : {};
 
@@ -47,7 +49,8 @@ export async function resolveOptionForStore(
 }
 
 export async function resolveLocationForStore(locationId: string, storeId: string) {
-  if (!locationId) return null;
+  // The sentinel means "none" — never try to look it up.
+  if (!locationId || locationId === CLEAR_FIELD_VALUE) return null;
 
   const direct = await prisma.location.findFirst({
     where: { id: locationId, storeId, isActive: true }
@@ -64,7 +67,8 @@ export async function resolveLocationForStore(locationId: string, storeId: strin
 }
 
 export async function resolveStaffForStore(staffMemberId: string, storeId: string) {
-  if (!staffMemberId) return null;
+  // The sentinel means "none" — never try to look it up.
+  if (!staffMemberId || staffMemberId === CLEAR_FIELD_VALUE) return null;
 
   const direct = await prisma.staffMember.findFirst({
     where: { id: staffMemberId, storeId, isActive: true }

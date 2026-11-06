@@ -6,6 +6,8 @@ import { PreviousCustomerLookup, type CustomerProfile } from "@/components/previ
 import { SubmitButton } from "@/components/submit-button";
 import { searchPreviousCustomers } from "@/lib/server/customer-lookup-actions";
 import {
+  CLEAR_FIELD_VALUE,
+  toSelectValue,
   findDefaultTypeId,
   formatDateLabel,
   getCurrentTimeValue,
@@ -121,15 +123,15 @@ function emptyState(todayDate: string, defaultTime: string): FormState {
     guestName: "",
     visitType: "APPOINTMENT",
     appointmentTypeOptionId: "",
-    assignedStaffMemberId: "",
-    locationId: "",
+    assignedStaffMemberId: CLEAR_FIELD_VALUE,
+    locationId: CLEAR_FIELD_VALUE,
     appointmentDate: todayDate,
     timeIn: defaultTime,
     timeOut: "",
     wearDate: "",
-    leadSourceOptionId: "",
-    pricePointOptionId: "",
-    sizeOptionId: "",
+    leadSourceOptionId: CLEAR_FIELD_VALUE,
+    pricePointOptionId: CLEAR_FIELD_VALUE,
+    sizeOptionId: CLEAR_FIELD_VALUE,
     purchased: "",
     otherPurchase: "",
     comments: "",
@@ -143,15 +145,15 @@ function fromRow(row: DailyLogEditableRow): FormState {
     guestName: row.guestName,
     visitType: row.visitTypeRaw === "WALK_IN" ? "WALK_IN" : "APPOINTMENT",
     appointmentTypeOptionId: row.appointmentTypeOptionId,
-    assignedStaffMemberId: row.assignedStaffMemberId,
-    locationId: row.locationId,
+    assignedStaffMemberId: toSelectValue(row.assignedStaffMemberId),
+    locationId: toSelectValue(row.locationId),
     appointmentDate: row.appointmentDateRaw,
     timeIn: row.timeInRaw,
     timeOut: row.timeOutRaw,
     wearDate: row.wearDateRaw,
-    leadSourceOptionId: row.leadSourceOptionId,
-    pricePointOptionId: row.pricePointOptionId,
-    sizeOptionId: row.sizeOptionId,
+    leadSourceOptionId: toSelectValue(row.leadSourceOptionId),
+    pricePointOptionId: toSelectValue(row.pricePointOptionId),
+    sizeOptionId: toSelectValue(row.sizeOptionId),
     purchased: row.purchasedRaw === "Yes" ? "Yes" : row.purchasedRaw === "No" ? "No" : "",
     otherPurchase: row.otherPurchaseRaw === "Yes" ? "Yes" : row.otherPurchaseRaw === "No" ? "No" : "",
     comments: row.commentsRaw,
@@ -316,11 +318,11 @@ export function DailyLogWorkflowPanel({
         current.visitType === "WALK_IN"
           ? findDefaultTypeId(activeWalkInTypes)
           : findDefaultTypeId(activeAppointmentTypes),
-      assignedStaffMemberId: "",
-      locationId: "",
-      leadSourceOptionId: "",
-      pricePointOptionId: "",
-      sizeOptionId: ""
+      assignedStaffMemberId: CLEAR_FIELD_VALUE,
+      locationId: CLEAR_FIELD_VALUE,
+      leadSourceOptionId: CLEAR_FIELD_VALUE,
+      pricePointOptionId: CLEAR_FIELD_VALUE,
+      sizeOptionId: CLEAR_FIELD_VALUE
     }));
   }, [selectedStoreId, isEditing, activeAppointmentTypes, activeWalkInTypes]);
 
@@ -592,7 +594,7 @@ export function DailyLogWorkflowPanel({
               onChange={(event) => patch("assignedStaffMemberId", event.target.value)}
               value={formState.assignedStaffMemberId}
             >
-              <option value="">{useSeamstressField ? "Select seamstress" : "Select stylist"}</option>
+              <option value={CLEAR_FIELD_VALUE}>{useSeamstressField ? "Select seamstress" : "Select stylist"}</option>
               {visibleStaffMembers.map((staffMember) => (
                 <option key={staffMember.id} value={staffMember.id}>
                   {staffMember.fullName}
@@ -609,7 +611,7 @@ export function DailyLogWorkflowPanel({
               onChange={(event) => patch("locationId", event.target.value)}
               value={formState.locationId}
             >
-              <option value="">No location yet</option>
+              <option value={CLEAR_FIELD_VALUE}>No location yet</option>
               {activeLocations.map((location) => (
                 <option key={location.id} value={location.id}>
                   {location.name}
@@ -637,7 +639,7 @@ export function DailyLogWorkflowPanel({
               onChange={(event) => patch("leadSourceOptionId", event.target.value)}
               value={formState.leadSourceOptionId}
             >
-              <option value="">Select lead source</option>
+              <option value={CLEAR_FIELD_VALUE}>Select lead source</option>
               {activeLeadSources.map((option) => (
                 <option key={option.id} value={option.id}>
                   {option.label}
@@ -654,7 +656,7 @@ export function DailyLogWorkflowPanel({
               onChange={(event) => patch("pricePointOptionId", event.target.value)}
               value={formState.pricePointOptionId}
             >
-              <option value="">Select price point</option>
+              <option value={CLEAR_FIELD_VALUE}>Select price point</option>
               {activePricePoints.map((option) => (
                 <option key={option.id} value={option.id}>
                   {option.label}
@@ -671,7 +673,7 @@ export function DailyLogWorkflowPanel({
               onChange={(event) => patch("sizeOptionId", event.target.value)}
               value={formState.sizeOptionId}
             >
-              <option value="">Select size</option>
+              <option value={CLEAR_FIELD_VALUE}>Select size</option>
               {activeSizes.map((option) => (
                 <option key={option.id} value={option.id}>
                   {option.label}
